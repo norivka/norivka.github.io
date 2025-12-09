@@ -11,12 +11,9 @@ try {
         process.exit(1);
     }
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
     const days = [];
-    if (element.today) days.push(element.today);
-    if (element.tomorrow) days.push(element.tomorrow);
+    if (element.today) days.push({...element.today, isToday: true });
+    if (element.tomorrow) days.push({ ...element.tomorrow, isToday: false });
 
     if (days.length === 0) {
         console.error('No days found in element 1.1');
@@ -24,10 +21,6 @@ try {
     }
 
     const processedDays = days.map(day => {
-        const dayDate = new Date(day.date);
-        dayDate.setHours(0, 0, 0, 0);
-        const isToday = dayDate.getTime() === today.getTime();
-
         // Filter slots with type="Definite"
         const definiteSlots = (day.slots || [])
             .filter(slot => slot.type === 'Definite')
@@ -39,7 +32,7 @@ try {
 
         return {
             date: day.date,
-            isToday: isToday,
+            isToday: day.isToday,
             outages: definiteSlots
         };
     });
