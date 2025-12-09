@@ -6,7 +6,7 @@
       "isToday": true,
       "outages": [
         {
-          "start": 270,
+          "start": 300,
           "end": 690
         },
         {
