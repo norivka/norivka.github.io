@@ -222,7 +222,7 @@ function sendNotification(title, body) {
 }
 
 // Event listeners
-document.getElementById('notificationBtn').addEventListener('click', requestNotificationPermission);
+//document.getElementById('notificationBtn').addEventListener('click', requestNotificationPermission);
 
 // Register Service Worker
 if ('serviceWorker' in navigator) {
@@ -265,6 +265,7 @@ document.addEventListener('visibilitychange', () => {
 startVisibilityPolling();
 
 // Check notification permission on load
+/*
 if ('Notification' in window && Notification.permission === 'granted') {
     notificationsEnabled = true;
     const btn = document.getElementById('notificationBtn');
@@ -273,3 +274,4 @@ if ('Notification' in window && Notification.permission === 'granted') {
     document.getElementById('notificationStatus').innerHTML = 
         '<div class="status success">Сповіщення активні</div>';
 }
+*/
