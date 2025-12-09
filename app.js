@@ -1,5 +1,6 @@
 const DATA_URL = 'data/outages.json';
 const STORAGE_KEY = 'lastSchedule';
+const FOREGROUND_CHECK_INTERVAL = 5 * 60 * 1000; // Check every 5 minutes when app is visible
 
 let notificationsEnabled = false;
 
@@ -194,8 +195,33 @@ if ('serviceWorker' in navigator) {
 }
 
 // Initialize
-// Load schedule once on startup (Service Worker handles background updates)
 loadSchedule();
+
+// Poll for updates when app is visible (Service Worker handles background updates)
+let visibilityCheckInterval;
+
+function startVisibilityPolling() {
+    if (!document.hidden) {
+        visibilityCheckInterval = setInterval(() => {
+            if (!document.hidden) {
+                loadSchedule();
+            }
+        }, FOREGROUND_CHECK_INTERVAL);
+    }
+}
+
+// Start/stop polling based on page visibility
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+        clearInterval(visibilityCheckInterval);
+    } else {
+        loadSchedule(); // Load immediately when page becomes visible
+        startVisibilityPolling();
+    }
+});
+
+// Start polling if page is initially visible
+startVisibilityPolling();
 
 // Check notification permission on load
 if ('Notification' in window && Notification.permission === 'granted') {
