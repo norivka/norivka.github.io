@@ -130,11 +130,19 @@ async function requestNotificationPermission() {
         return;
     }
 
+    if (!('serviceWorker' in navigator)) {
+        statusDiv.innerHTML = '<div class="status warning">Ваш браузер не підтримує Service Worker</div>';
+        btn.disabled = true;
+        return;
+    }
+
     if (Notification.permission === 'granted') {
         notificationsEnabled = true;
         btn.textContent = 'Сповіщення увімкнено ✓';
         btn.style.background = '#666';
         statusDiv.innerHTML = '<div class="status success">Сповіщення активні</div>';
+        // Subscribe to push if not already subscribed
+        await subscribeToPushNotifications();
         return;
     }
 
@@ -151,10 +159,55 @@ async function requestNotificationPermission() {
         btn.textContent = 'Сповіщення увімкнено ✓';
         btn.style.background = '#666';
         statusDiv.innerHTML = '<div class="status success">Сповіщення активні</div>';
+        
+        // Subscribe to push notifications
+        await subscribeToPushNotifications();
+        
         sendNotification('Сповіщення активовано', 'Ви будете отримувати повідомлення про зміни у графіку');
     } else {
         statusDiv.innerHTML = '<div class="status warning">Дозвіл на сповіщення не надано</div>';
     }
+}
+
+async function subscribeToPushNotifications() {
+    try {
+        const registration = await navigator.serviceWorker.ready;
+        
+        // Check if already subscribed
+        let subscription = await registration.pushManager.getSubscription();
+        
+        if (!subscription) {
+            const vapidPublicKey = 'BGW2Wfv-M7w1xX13v8MQzutf_8xsMhN52wKP-wGfo_5afyTMHt8g7MjtBxsI5MJousR00UonmckEMp-hSEbv5BI';
+            const convertedVapidKey = urlBase64ToUint8Array(vapidPublicKey);
+            
+            subscription = await registration.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: convertedVapidKey
+            });
+            
+            console.log('Push subscription created:', subscription);
+        }
+        
+        // Save subscription to localStorage for GitHub Actions to use
+        localStorage.setItem('pushSubscription', JSON.stringify(subscription));
+        
+        return subscription;
+    } catch (error) {
+        console.error('Failed to subscribe to push notifications:', error);
+    }
+}
+
+function urlBase64ToUint8Array(base64String) {
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding)
+        .replace(/\-/g, '+')
+        .replace(/_/g, '/');
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+    for (let i = 0; i < rawData.length; ++i) {
+        outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
 }
 
 function sendNotification(title, body) {
@@ -174,20 +227,8 @@ document.getElementById('notificationBtn').addEventListener('click', requestNoti
 // Register Service Worker
 if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/sw.js')
-        .then(async (registration) => {
+        .then((registration) => {
             console.log('Service Worker registered:', registration);
-            
-            // Request periodic background sync (Chrome Android)
-            if ('periodicSync' in registration) {
-                try {
-                    await registration.periodicSync.register('check-outages', {
-                        minInterval: 5 * 60 * 1000 // 5 minutes
-                    });
-                    console.log('Periodic sync registered');
-                } catch (error) {
-                    console.log('Periodic sync not available:', error);
-                }
-            }
         })
         .catch((error) => {
             console.error('Service Worker registration failed:', error);

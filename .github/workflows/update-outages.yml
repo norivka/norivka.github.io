@@ -25,8 +25,29 @@ jobs:
           node process-data.js
 
       - name: Commit and push if changed
+        id: commit
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           git add data/outages.json
-          git diff --quiet && git diff --staged --quiet || (git commit -m "Update outages schedule [skip ci]" && git push)
+          if git diff --quiet && git diff --staged --quiet; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            git commit -m "Update outages schedule [skip ci]"
+            git push
+            echo "changed=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Setup Node.js for push notifications
+        if: steps.commit.outputs.changed == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Send push notifications
+        if: steps.commit.outputs.changed == 'true'
+        env:
+          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
+        run: |
+          npm install web-push
+          node send-push.js subscriptions.json || echo "No subscriptions or push failed"

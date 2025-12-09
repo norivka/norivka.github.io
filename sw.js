@@ -14,62 +14,34 @@ self.addEventListener('activate', (event) => {
     event.waitUntil(self.clients.claim());
 });
 
-// Periodic background sync (when supported)
-self.addEventListener('periodicsync', (event) => {
-    if (event.tag === 'check-outages') {
-        event.waitUntil(checkForUpdates());
-    }
-});
-
-// Background sync fallback
-self.addEventListener('sync', (event) => {
-    if (event.tag === 'check-outages') {
-        event.waitUntil(checkForUpdates());
-    }
-});
-
-// Check for schedule updates
-async function checkForUpdates() {
-    try {
-        const response = await fetch(DATA_URL + '?t=' + Date.now(), {
-            cache: 'no-store'
-        });
-        
-        if (!response.ok) {
-            console.error('Failed to fetch data:', response.status);
-            return;
+// Handle push notifications
+self.addEventListener('push', (event) => {
+    console.log('Push received:', event);
+    
+    let notificationData = {
+        title: 'Графік відключень змінено!',
+        body: 'Перевірте оновлений розклад відключень електроенергії',
+        icon: 'icon-192.png',
+        badge: 'icon-192.png',
+        tag: 'schedule-update',
+        requireInteraction: false,
+        vibrate: [200, 100, 200]
+    };
+    
+    if (event.data) {
+        try {
+            const data = event.data.json();
+            if (data.title) notificationData.title = data.title;
+            if (data.body) notificationData.body = data.body;
+        } catch (e) {
+            console.error('Error parsing push data:', e);
         }
-        
-        const newData = await response.json();
-        
-        // Get stored data
-        const cache = await caches.open(CACHE_NAME);
-        const cachedResponse = await cache.match('cached-schedule');
-        
-        if (cachedResponse) {
-            const oldData = await cachedResponse.json();
-            
-            // Compare schedules
-            if (JSON.stringify(oldData.days) !== JSON.stringify(newData.days)) {
-                // Schedule changed - send notification
-                await self.registration.showNotification('Графік відключень змінено!', {
-                    body: 'Перевірте оновлений розклад відключень електроенергії',
-                    icon: 'icon-192.png',
-                    badge: 'icon-192.png',
-                    tag: 'schedule-update',
-                    requireInteraction: false,
-                    vibrate: [200, 100, 200]
-                });
-            }
-        }
-        
-        // Store new data
-        await cache.put('cached-schedule', new Response(JSON.stringify(newData)));
-        
-    } catch (error) {
-        console.error('Error checking for updates:', error);
     }
-}
+    
+    event.waitUntil(
+        self.registration.showNotification(notificationData.title, notificationData)
+    );
+});
 
 // Handle notification clicks
 self.addEventListener('notificationclick', (event) => {
