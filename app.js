@@ -1,5 +1,4 @@
 const DATA_URL = 'data/outages.json';
-const CHECK_INTERVAL = 60000; // Check every minute
 const STORAGE_KEY = 'lastSchedule';
 
 let notificationsEnabled = false;
@@ -28,20 +27,6 @@ function getCurrentTime() {
     const now = new Date();
     const minutes = now.getHours() * 60 + now.getMinutes();
     return minutes;
-}
-
-function updateCurrentTime() {
-    const now = new Date();
-    const timeStr = now.toLocaleString('uk-UA', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit'
-    });
-    document.getElementById('currentTime').textContent = `🕐 ${timeStr}`;
 }
 
 function renderSchedule(data) {
@@ -185,12 +170,32 @@ function sendNotification(title, body) {
 // Event listeners
 document.getElementById('notificationBtn').addEventListener('click', requestNotificationPermission);
 
-// Initialize
-updateCurrentTime();
-setInterval(updateCurrentTime, 1000);
+// Register Service Worker
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js')
+        .then(async (registration) => {
+            console.log('Service Worker registered:', registration);
+            
+            // Request periodic background sync (Chrome Android)
+            if ('periodicSync' in registration) {
+                try {
+                    await registration.periodicSync.register('check-outages', {
+                        minInterval: 5 * 60 * 1000 // 5 minutes
+                    });
+                    console.log('Periodic sync registered');
+                } catch (error) {
+                    console.log('Periodic sync not available:', error);
+                }
+            }
+        })
+        .catch((error) => {
+            console.error('Service Worker registration failed:', error);
+        });
+}
 
+// Initialize
+// Load schedule once on startup (Service Worker handles background updates)
 loadSchedule();
-setInterval(loadSchedule, CHECK_INTERVAL);
 
 // Check notification permission on load
 if ('Notification' in window && Notification.permission === 'granted') {
