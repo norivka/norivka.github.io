@@ -50,7 +50,7 @@ function renderSchedule(data) {
         html += `<div class="day-title">${dateStr}</div>`;
 
         if (day.outages.length === 0) {
-            html += `<div class="no-outages">Відключень немає</div>`;
+            html = '<div class="status warning">Немає даних про відключення</div>';
         } else {
             day.outages.forEach(outage => {
                 const isActive = day.isToday && currentMinutes >= outage.start && currentMinutes < outage.end;
