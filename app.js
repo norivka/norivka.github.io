@@ -1,8 +1,5 @@
 const DATA_URL = 'data/outages.json';
-const STORAGE_KEY = 'lastSchedule';
 const FOREGROUND_CHECK_INTERVAL = 5 * 60 * 1000; // Check every 5 minutes when app is visible
-
-let notificationsEnabled = false;
 
 function formatTime(minutes) {
     const hours = Math.floor(minutes / 60);
@@ -80,38 +77,15 @@ function renderSchedule(data) {
     content.innerHTML = html;
 }
 
-function compareSchedules(oldData, newData) {
-    if (!oldData || !newData) return false;
-    return JSON.stringify(oldData.days) !== JSON.stringify(newData.days);
-}
-
 async function loadSchedule() {
     try {
-        const response = await fetch(DATA_URL + '?t=' + Date.now(), {
-            cache: 'no-store',
-            headers: {
-                'Cache-Control': 'no-cache, no-store, must-revalidate',
-                'Pragma': 'no-cache'
-            }
-        });
+        const response = await fetch(DATA_URL + '?t=' + Date.now());
         if (!response.ok) {
             throw new Error('Failed to load data');
         }
         
         const data = await response.json();
         renderSchedule(data);
-
-        // Check for changes and send notification
-        const lastSchedule = localStorage.getItem(STORAGE_KEY);
-        if (lastSchedule && notificationsEnabled) {
-            const oldData = JSON.parse(lastSchedule);
-            if (compareSchedules(oldData, data)) {
-                sendNotification('Графік відключень змінено!', 
-                    'Перевірте оновлений розклад відключень електроенергії');
-            }
-        }
-
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
         
     } catch (error) {
         console.error('Error loading schedule:', error);
@@ -120,125 +94,10 @@ async function loadSchedule() {
     }
 }
 
-async function requestNotificationPermission() {
-    const btn = document.getElementById('notificationBtn');
-    const statusDiv = document.getElementById('notificationStatus');
-
-    if (!('Notification' in window)) {
-        statusDiv.innerHTML = '<div class="status warning">Ваш браузер не підтримує сповіщення</div>';
-        btn.disabled = true;
-        return;
-    }
-
-    if (!('serviceWorker' in navigator)) {
-        statusDiv.innerHTML = '<div class="status warning">Ваш браузер не підтримує Service Worker</div>';
-        btn.disabled = true;
-        return;
-    }
-
-    if (Notification.permission === 'granted') {
-        notificationsEnabled = true;
-        btn.textContent = 'Сповіщення увімкнено ✓';
-        btn.style.background = '#666';
-        statusDiv.innerHTML = '<div class="status success">Сповіщення активні</div>';
-        // Subscribe to push if not already subscribed
-        await subscribeToPushNotifications();
-        return;
-    }
-
-    if (Notification.permission === 'denied') {
-        statusDiv.innerHTML = '<div class="status warning">Сповіщення заблоковані. Увімкніть їх у налаштуваннях браузера</div>';
-        btn.disabled = true;
-        return;
-    }
-
-    const permission = await Notification.requestPermission();
-    
-    if (permission === 'granted') {
-        notificationsEnabled = true;
-        btn.textContent = 'Сповіщення увімкнено ✓';
-        btn.style.background = '#666';
-        statusDiv.innerHTML = '<div class="status success">Сповіщення активні</div>';
-        
-        // Subscribe to push notifications
-        await subscribeToPushNotifications();
-        
-        sendNotification('Сповіщення активовано', 'Ви будете отримувати повідомлення про зміни у графіку');
-    } else {
-        statusDiv.innerHTML = '<div class="status warning">Дозвіл на сповіщення не надано</div>';
-    }
-}
-
-async function subscribeToPushNotifications() {
-    try {
-        const registration = await navigator.serviceWorker.ready;
-        
-        // Check if already subscribed
-        let subscription = await registration.pushManager.getSubscription();
-        
-        if (!subscription) {
-            const vapidPublicKey = 'BGW2Wfv-M7w1xX13v8MQzutf_8xsMhN52wKP-wGfo_5afyTMHt8g7MjtBxsI5MJousR00UonmckEMp-hSEbv5BI';
-            const convertedVapidKey = urlBase64ToUint8Array(vapidPublicKey);
-            
-            subscription = await registration.pushManager.subscribe({
-                userVisibleOnly: true,
-                applicationServerKey: convertedVapidKey
-            });
-            
-            console.log('Push subscription created:', subscription);
-        }
-        
-        // Save subscription to localStorage for GitHub Actions to use
-        localStorage.setItem('pushSubscription', JSON.stringify(subscription));
-        
-        return subscription;
-    } catch (error) {
-        console.error('Failed to subscribe to push notifications:', error);
-    }
-}
-
-function urlBase64ToUint8Array(base64String) {
-    const padding = '='.repeat((4 - base64String.length % 4) % 4);
-    const base64 = (base64String + padding)
-        .replace(/\-/g, '+')
-        .replace(/_/g, '/');
-    const rawData = window.atob(base64);
-    const outputArray = new Uint8Array(rawData.length);
-    for (let i = 0; i < rawData.length; ++i) {
-        outputArray[i] = rawData.charCodeAt(i);
-    }
-    return outputArray;
-}
-
-function sendNotification(title, body) {
-    if ('Notification' in window && Notification.permission === 'granted') {
-        new Notification(title, {
-            body: body,
-            icon: '⚡',
-            badge: '⚡',
-            requireInteraction: false
-        });
-    }
-}
-
-// Event listeners
-//document.getElementById('notificationBtn').addEventListener('click', requestNotificationPermission);
-
-// Register Service Worker
-if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/sw.js')
-        .then((registration) => {
-            console.log('Service Worker registered:', registration);
-        })
-        .catch((error) => {
-            console.error('Service Worker registration failed:', error);
-        });
-}
-
 // Initialize
 loadSchedule();
 
-// Poll for updates when app is visible (Service Worker handles background updates)
+// Poll for updates when app is visible
 let visibilityCheckInterval;
 
 function startVisibilityPolling() {
@@ -263,15 +122,3 @@ document.addEventListener('visibilitychange', () => {
 
 // Start polling if page is initially visible
 startVisibilityPolling();
-
-// Check notification permission on load
-/*
-if ('Notification' in window && Notification.permission === 'granted') {
-    notificationsEnabled = true;
-    const btn = document.getElementById('notificationBtn');
-    btn.textContent = 'Сповіщення увімкнено ✓';
-    btn.style.background = '#666';
-    document.getElementById('notificationStatus').innerHTML = 
-        '<div class="status success">Сповіщення активні</div>';
-}
-*/
