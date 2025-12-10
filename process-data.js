@@ -20,7 +20,7 @@ try {
         process.exit(1);
     }
 
-    const processedDays = days.filter(day => day.status === "ScheduleApplies")map(day => {
+    const processedDays = days.filter(day => day.status === "ScheduleApplies").map(day => {
         // Filter slots with type="Definite"
         const definiteSlots = (day.slots || [])
             .filter(slot => slot.type === 'Definite')
