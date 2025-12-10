@@ -1,27 +1,9 @@
 {
-  "lastUpdate": "2025-12-10T21:55:49.574Z",
+  "lastUpdate": "2025-12-10T22:17:16.505Z",
   "days": [
     {
-      "date": "2025-12-10T00:00:00+02:00",
-      "isToday": true,
-      "outages": [
-        {
-          "start": 90,
-          "end": 510
-        },
-        {
-          "start": 720,
-          "end": 1140
-        },
-        {
-          "start": 1350,
-          "end": 1440
-        }
-      ]
-    },
-    {
       "date": "2025-12-11T00:00:00+02:00",
-      "isToday": false,
+      "isToday": true,
       "outages": [
         {
           "start": 0,
