@@ -1,17 +1,39 @@
 {
-  "lastUpdate": "2025-12-29T18:32:05.098Z",
+  "lastUpdate": "2025-12-29T19:09:29.941Z",
   "days": [
     {
       "date": "2025-12-29T00:00:00+02:00",
       "isToday": true,
       "outages": [
         {
+          "start": 0,
+          "end": 30
+        },
+        {
+          "start": 450,
+          "end": 660
+        },
+        {
+          "start": 720,
+          "end": 870
+        },
+        {
+          "start": 1080,
+          "end": 1290
+        }
+      ]
+    },
+    {
+      "date": "2025-12-30T00:00:00+02:00",
+      "isToday": false,
+      "outages": [
+        {
           "start": 270,
-          "end": 690
+          "end": 480
         },
         {
           "start": 900,
-          "end": 1200
+          "end": 1320
         }
       ]
     }
