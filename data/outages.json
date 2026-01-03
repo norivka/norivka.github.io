@@ -1,19 +1,9 @@
 {
-  "lastUpdate": "2026-01-03T21:53:22.547Z",
+  "lastUpdate": "2026-01-03T22:10:16.456Z",
   "days": [
     {
-      "date": "2026-01-03T00:00:00+02:00",
-      "isToday": true,
-      "outages": [
-        {
-          "start": 810,
-          "end": 1230
-        }
-      ]
-    },
-    {
       "date": "2026-01-04T00:00:00+02:00",
-      "isToday": false,
+      "isToday": true,
       "outages": [
         {
           "start": 0,
