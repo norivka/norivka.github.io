@@ -36,57 +36,55 @@ function getCurrentTime() {
 function renderSchedule(data) {
     const content = document.getElementById('content');
     
-    if (!data || !data.days || data.days.length === 0) {
-        content.innerHTML = '<div class="status warning">Немає даних про відключення</div>';
-        return;
-    }
-
     const currentMinutes = getCurrentTime();
     let html = '';
 
-    data.days.forEach(day => {
-        const date = new Date(day.date);
-        const dateStr = date.toLocaleDateString('uk-UA', {
-            weekday: 'long',
-            day: 'numeric',
-            month: 'long'
-        });
+    // Check if there's valid data to display
+    if (!data || !data.days || data.days.length === 0) {
+        html = '<div class="status warning">Немає даних про відключення</div>';
+    } else {
+        data.days.forEach(day => {
+            // Skip tomorrow's section if it has no outages
+            if (!day.isToday && day.outages.length === 0) {
+                return;
+            }
 
-        html += `<div class="day-section">`;
-        html += `<div class="day-title">${dateStr}</div>`;
-
-        if (day.outages.length === 0) {
-            html = '<div class="status warning">Немає даних про відключення</div>';
-        } else {
-            day.outages.forEach(outage => {
-                const isActive = day.isToday && currentMinutes >= outage.start && currentMinutes < outage.end;
-                const activeClass = isActive ? ' style="border-left-color: #ff6b6b; background: #fff5f5;"' : '';
-                
-                html += `<div class="outage-item"${activeClass}>`;
-                html += `<div class="outage-time">`;
-                if (isActive) html += '🔴 ';
-                html += `${formatTime(outage.start)} — ${formatTime(outage.end)}`;
-                html += `</div>`;
-                html += `<div class="outage-duration">Тривалість: ${calculateDuration(outage.start, outage.end)}</div>`;
-                html += `</div>`;
+            const date = new Date(day.date);
+            const dateStr = date.toLocaleDateString('uk-UA', {
+                weekday: 'long',
+                day: 'numeric',
+                month: 'long'
             });
-        }
 
-        html += `</div>`;
-    });
+            html += `<div class="day-section">`;
+            html += `<div class="day-title">${dateStr}</div>`;
 
-    if (data.lastUpdate) {
+            if (day.outages.length === 0) {
+                html += '<div class="status warning">Немає даних про відключення</div>';
+            } else {
+                day.outages.forEach(outage => {
+                    const isActive = day.isToday && currentMinutes >= outage.start && currentMinutes < outage.end;
+                    const activeClass = isActive ? ' style="border-left-color: #ff6b6b; background: #fff5f5;"' : '';
+                    
+                    html += `<div class="outage-item"${activeClass}>`;
+                    html += `<div class="outage-time">`;
+                    if (isActive) html += '🔴 ';
+                    html += `${formatTime(outage.start)} — ${formatTime(outage.end)}`;
+                    html += `</div>`;
+                    html += `<div class="outage-duration">Тривалість: ${calculateDuration(outage.start, outage.end)}</div>`;
+                    html += `</div>`;
+                });
+            }
+
+            html += `</div>`;
+        });
+    }
+
+    // Always show last update time if available
+    if (data && data.lastUpdate) {
         const updateTime = new Date(data.lastUpdate).toLocaleString('uk-UA');
         html += `<div class="last-update">Останнє оновлення: ${updateTime}</div>`;
     }
-    
-    // Add data source indicator
-    const sourceNames = {
-        yasno: 'ЯСНО',
-        dtek: 'ДТЕК'
-    };
-    const sourceName = data.source ? sourceNames[data.source.toLowerCase()] : sourceNames[currentDataSource];
-    html += `<div class="data-source">Джерело даних: ${sourceName}</div>`;
 
     content.innerHTML = html;
 }

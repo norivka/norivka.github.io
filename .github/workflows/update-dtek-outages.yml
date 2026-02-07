@@ -116,10 +116,4 @@ jobs:
             echo "changed=true" >> $GITHUB_OUTPUT
           fi
 
-      - name: Send push notifications
-        if: steps.commit.outputs.changed == 'true'
-        env:
-          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
-        run: |
-          npm install web-push
-          node send-push.js subscriptions.json || echo "No subscriptions or push failed"
+      

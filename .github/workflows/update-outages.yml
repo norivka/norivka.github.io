@@ -38,16 +38,4 @@ jobs:
             echo "changed=true" >> $GITHUB_OUTPUT
           fi
 
-      - name: Setup Node.js for push notifications
-        if: steps.commit.outputs.changed == 'true'
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
 
-      - name: Send push notifications
-        if: steps.commit.outputs.changed == 'true'
-        env:
-          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
-        run: |
-          npm install web-push
-          node send-push.js subscriptions.json || echo "No subscriptions or push failed"

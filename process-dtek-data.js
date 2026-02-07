@@ -103,6 +103,8 @@ function processData(data) {
     const ukraineNow = new Date(now.getTime() + 2 * 60 * 60 * 1000);
     const currentDateStr = ukraineNow.toISOString().split('T')[0];
     
+    console.log('Current Ukraine date (for isToday logic):', currentDateStr);
+    
     const processedDays = [];
     
     // Process available days (today and possibly tomorrow)
@@ -117,6 +119,8 @@ function processData(data) {
             const dayDateStr = ukraineDayDate.toISOString().split('T')[0];
             
             const isToday = dayDateStr === currentDateStr;
+            console.log(`Day ${dayDateStr} isToday: ${isToday}`);
+            
             const processedDay = processDayData(dayData['GPV1.1'], parseInt(timestamp), isToday);
             processedDays.push(processedDay);
         }
