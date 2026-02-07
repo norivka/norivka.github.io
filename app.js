@@ -1,4 +1,10 @@
-const DATA_URL = 'data/outages.json';
+const DATA_URLS = {
+    yasno: 'data/outages.json',
+    dtek: 'data/dtek-outages.json'
+};
+
+let currentDataSource = 'dtek'; // Default to DTEK
+let currentData = null;
 const FOREGROUND_CHECK_INTERVAL = 5 * 60 * 1000; // Check every 5 minutes when app is visible
 
 function formatTime(minutes) {
@@ -73,24 +79,57 @@ function renderSchedule(data) {
         const updateTime = new Date(data.lastUpdate).toLocaleString('uk-UA');
         html += `<div class="last-update">Останнє оновлення: ${updateTime}</div>`;
     }
+    
+    // Add data source indicator
+    const sourceNames = {
+        yasno: 'ЯСНО',
+        dtek: 'ДТЕК'
+    };
+    const sourceName = data.source ? sourceNames[data.source.toLowerCase()] : sourceNames[currentDataSource];
+    html += `<div class="data-source">Джерело даних: ${sourceName}</div>`;
 
     content.innerHTML = html;
 }
 
-async function loadSchedule() {
+async function loadSchedule(source = currentDataSource) {
     try {
-        const response = await fetch(DATA_URL + '?t=' + Date.now());
+        const response = await fetch(DATA_URLS[source] + '?t=' + Date.now());
         if (!response.ok) {
             throw new Error('Failed to load data');
         }
         
         const data = await response.json();
+        currentData = data;
         renderSchedule(data);
+        updateDataSourceIndicator(source);
         
     } catch (error) {
         console.error('Error loading schedule:', error);
         document.getElementById('content').innerHTML = 
             '<div class="error">Помилка завантаження даних. Спробуйте пізніше.</div>';
+    }
+}
+
+function updateDataSourceIndicator(source) {
+    const indicator = document.getElementById('data-source-indicator');
+    if (indicator) {
+        const sourceNames = {
+            yasno: 'ЯСНО',
+            dtek: 'ДТЕК'
+        };
+        indicator.textContent = `Джерело: ${sourceNames[source]}`;
+    }
+}
+
+function switchDataSource(source) {
+    if (source !== currentDataSource && DATA_URLS[source]) {
+        currentDataSource = source;
+        loadSchedule(source);
+        
+        // Update button states
+        document.querySelectorAll('.source-switcher button').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.source === source);
+        });
     }
 }
 

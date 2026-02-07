@@ -45,6 +45,42 @@
             font-size: 14px;
         }
 
+        .source-switcher {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            justify-content: center;
+        }
+
+        .source-btn {
+            padding: 8px 20px;
+            border: 2px solid #667eea;
+            background: white;
+            color: #667eea;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .source-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(102, 126, 234, 0.2);
+        }
+
+        .source-btn.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .data-source {
+            text-align: center;
+            color: #999;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+
 
 
         .schedule {
@@ -120,6 +156,11 @@
     <div class="container">
         <h1>⚡ Графік відключень електроенергії</h1>
         <p class="subtitle">Моніторинг планових відключень для черги 1.1 Дніпровських електромереж</p>
+        
+        <div class="source-switcher">
+            <button class="source-btn active" data-source="dtek" onclick="switchDataSource('dtek')">ДТЕК</button>
+            <button class="source-btn" data-source="yasno" onclick="switchDataSource('yasno')">ЯСНО</button>
+        </div>
         
         <div id="content" class="loading">Завантаження...</div>
     </div>
