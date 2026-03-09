@@ -1,16 +1,11 @@
 {
   "source": "DTEK",
-  "lastUpdate": "2026-03-09T15:39:41.365Z",
+  "lastUpdate": "2026-03-09T16:40:26.140Z",
   "days": [
     {
       "date": "2026-03-09T00:00:00+02:00",
       "isToday": true,
-      "outages": [
-        {
-          "start": 1080,
-          "end": 1320
-        }
-      ]
+      "outages": []
     },
     {
       "date": "2026-03-10T00:00:00+02:00",
