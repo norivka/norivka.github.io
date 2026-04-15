@@ -1,15 +1,15 @@
 {
   "source": "DTEK",
-  "lastUpdate": "2026-04-14T21:36:45.751Z",
+  "lastUpdate": "2026-04-15T03:41:06.014Z",
   "days": [
     {
       "date": "2026-04-14T00:00:00+02:00",
-      "isToday": true,
+      "isToday": false,
       "outages": []
     },
     {
       "date": "2026-04-15T00:00:00+02:00",
-      "isToday": false,
+      "isToday": true,
       "outages": []
     }
   ]
