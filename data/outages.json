@@ -1,9 +1,9 @@
 {
-  "lastUpdate": "2026-06-29T19:25:40.224Z",
+  "lastUpdate": "2026-06-29T21:06:00.751Z",
   "days": [
     {
       "date": "2026-06-30T00:00:00+03:00",
-      "isToday": false,
+      "isToday": true,
       "outages": [
         {
           "start": 1020,
