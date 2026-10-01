@@ -93,9 +93,12 @@ function processData(data) {
     const gpvData = factData.data;
     const todayTimestamp = factData.today;
     
-    if (!gpvData || Object.keys(gpvData).length === 0) {
-        console.error('No GPV data found');
-        throw new Error('No data available');
+    // DTEK legitimately publishes data: [] when no schedule is available.
+    // Reject malformed payloads, but publish an empty days list for that case.
+    if (!gpvData || typeof gpvData !== 'object' ||
+        (Array.isArray(gpvData) && gpvData.length > 0) ||
+        !Number.isFinite(todayTimestamp) || todayTimestamp <= 0) {
+        throw new Error('Invalid DTEK schedule response');
     }
     
     // Get current date in Ukraine timezone for comparison
