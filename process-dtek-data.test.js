@@ -4,14 +4,20 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
+const { extractFactData, processData } = require('./process-dtek-data');
 
-function runProcessor(fact) {
+function scheduleHtml(fact) {
+    return `<html><script>DisconSchedule.fact = ${JSON.stringify(fact)};\nDisconSchedule.other = {};</script></html>`;
+}
+
+function runProcessor(fact, html = scheduleHtml(fact)) {
     const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'dtek-test-'));
     try {
         fs.mkdirSync(path.join(cwd, 'data'));
         fs.writeFileSync(path.join(cwd, 'data/dtek-outages.json'), 'previous data');
-        fs.writeFileSync(path.join(cwd, 'raw-dtek-data.html'), '<html></html>');
-        fs.writeFileSync(path.join(cwd, 'dtek-raw-data.json'), JSON.stringify(fact));
+        fs.writeFileSync(path.join(cwd, 'raw-dtek-data.html'), html);
+        // Leftover Puppeteer output must never override a fresh HTML response.
+        fs.writeFileSync(path.join(cwd, 'dtek-raw-data.json'), JSON.stringify({ data: [], today: 1790802000 }));
         const result = spawnSync(process.execPath, [path.join(__dirname, 'process-dtek-data.js')], {
             cwd, encoding: 'utf8'
         });
@@ -49,4 +55,47 @@ test('existing populated schedule conversion still works', () => {
     });
     assert.equal(result.status, 0, result.stderr);
     assert.deepEqual(JSON.parse(result.output).days[0].outages, [{ start: 90, end: 210 }]);
+});
+
+test('extracts nested JSON with escaped quotes and braces in strings', () => {
+    const fact = { data: {}, today: 1790802000, update: 'text } "quoted" \\ { text' };
+    assert.deepEqual(extractFactData(scheduleHtml(fact)), fact);
+});
+
+test('missing, truncated, and invalid HTML data preserve previous output', () => {
+    for (const html of ['<html>Service unavailable</html>',
+        '<script>DisconSchedule.fact = {"data":{',
+        '<script>DisconSchedule.fact = {invalid};</script>',
+        '<script>DisconSchedule.fact = null;</script>']) {
+        const result = runProcessor({}, html);
+        assert.notEqual(result.status, 0);
+        assert.equal(result.output, 'previous data');
+    }
+});
+
+test('parses the saved DTEK page with both days and all groups', () => {
+    const html = fs.readFileSync(path.join(__dirname, 'dtek-page.html'), 'utf8');
+    const result = runProcessor({}, html);
+    assert.equal(result.status, 0, result.stderr);
+    const output = JSON.parse(result.output);
+    assert.equal(output.days.length, 2);
+    assert.deepEqual(output.days[0].outages, [
+        { start: 90, end: 600 }, { start: 810, end: 1230 }, { start: 1320, end: 1440 }
+    ]);
+    assert.deepEqual(output.days[1].outages, []);
+});
+
+test('Kyiv dates and isToday handle summer and winter midnight', () => {
+    const hours = Object.fromEntries(Array.from({ length: 24 }, (_, i) => [i + 1, 'yes']));
+    for (const [midnight, now] of [
+        ['2026-10-17T00:00:00+03:00', '2026-10-17T00:30:00+03:00'],
+        ['2026-02-07T00:00:00+02:00', '2026-02-07T00:30:00+02:00']
+    ]) {
+        const timestamp = Date.parse(midnight) / 1000;
+        const output = processData(scheduleHtml({
+            data: { [timestamp]: { 'GPV1.1': hours } }, today: timestamp
+        }), new Date(now));
+        assert.equal(output.days[0].date, new Date(midnight).toISOString());
+        assert.equal(output.days[0].isToday, true);
+    }
 });
