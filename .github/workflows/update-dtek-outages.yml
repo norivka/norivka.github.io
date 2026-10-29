@@ -23,19 +23,20 @@ jobs:
           package-manager-cache: false
 
       - name: Test DTEK processor
-        run: node --test process-dtek-data.test.js
+        run: node --test process-dtek-data.test.js fetch-dtek-data.test.js
 
-      - name: Fetch DTEK data
-        run: |
-          curl --fail --location --silent --show-error \
-            --retry 3 --retry-all-errors --retry-delay 5 \
-            --connect-timeout 15 --max-time 60 \
-            "https://www.dtek-dnem.com.ua/ua/shutdowns" \
-            --output raw-dtek-data.html
+      - name: Fetch and process DTEK data
+        id: fetch
+        run: bash fetch-dtek-data.sh
 
-      - name: Process DTEK data
-        run: |
-          node process-dtek-data.js
+      - name: Save failed DTEK response
+        if: failure() && steps.fetch.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: failed-dtek-response
+          path: raw-dtek-data.html
+          if-no-files-found: ignore
+          retention-days: 3
 
       - name: Commit and push if changed
         id: commit

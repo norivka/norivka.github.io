@@ -3,7 +3,15 @@ const fs = require('fs');
 function extractFactData(html) {
     const assignment = /\bDisconSchedule\.fact\s*=\s*/.exec(html);
     if (!assignment) {
-        throw new Error('Could not find DisconSchedule.fact in the DTEK response');
+        const title = /<title\b[^>]*>([\s\S]*?)<\/title\s*>/i.exec(html)?.[1]
+            .replace(/\s+/g, ' ').trim().slice(0, 160);
+        const protectionPage = /incapsula|cf-chl-|challenge-platform/i.test(html);
+        const details = [
+            `${Buffer.byteLength(html, 'utf8')} bytes`,
+            title && `title: ${title}`,
+            protectionPage && 'possible bot-protection page'
+        ].filter(Boolean).join('; ');
+        throw new Error(`Could not find DisconSchedule.fact in the DTEK response (${details})`);
     }
 
     const start = assignment.index + assignment[0].length;

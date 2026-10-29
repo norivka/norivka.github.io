@@ -13,7 +13,7 @@
 ## Як працює
 
 1. **GitHub Actions** запускає отримання даних ДТЕК та Yasno за розкладом кожні 6 хвилин (фактичні запуски можуть затримуватися на стороні GitHub).
-2. Графік ДТЕК читається з `DisconSchedule.fact` у HTML сторінки без запуску браузера; мережеві помилки та HTTP-помилки повторюються до 3 разів.
+2. Графік ДТЕК читається з `DisconSchedule.fact` у HTML сторінки без запуску браузера. Завантаження та перевірка графіка виконуються до 3 разів із паузою 10 секунд, зокрема коли HTTP 200 містить сторінку без даних. Після невдалих спроб відповідь зберігається в артефакті `failed-dtek-response` на 3 дні.
 3. Дані зберігаються у `data/dtek-outages.json` та `data/outages.json`. Некоректна відповідь ДТЕК не перезаписує попередні дані; коректний порожній графік публікується як `days: []`.
 4. SPA завантажує оновлення кожні 5 хвилин, поки сторінка видима, та відразу після повернення до неї.
 
@@ -30,12 +30,8 @@
 Для ДТЕК (Node.js 24, без додаткових npm-залежностей):
 
 ```bash
-curl --fail --location --silent --show-error \
-  --retry 3 --retry-all-errors --retry-delay 5 \
-  --connect-timeout 15 --max-time 60 \
-  "https://www.dtek-dnem.com.ua/ua/shutdowns" -o raw-dtek-data.html
-node process-dtek-data.js
-node --test process-dtek-data.test.js
+bash fetch-dtek-data.sh
+node --test process-dtek-data.test.js fetch-dtek-data.test.js
 ```
 
 Для Yasno:

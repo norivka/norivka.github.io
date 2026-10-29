@@ -73,6 +73,18 @@ test('missing, truncated, and invalid HTML data preserve previous output', () =>
     }
 });
 
+test('missing schedule errors identify protection responses without dumping the HTML', () => {
+    const html = '<html><title> Request\n unsuccessful </title>Incapsula incident ID: private details</html>';
+    assert.throws(() => extractFactData(html), (error) => {
+        assert.match(error.message, /Could not find DisconSchedule.fact/);
+        assert.match(error.message, new RegExp(`${Buffer.byteLength(html)} bytes`));
+        assert.match(error.message, /title: Request unsuccessful/);
+        assert.match(error.message, /possible bot-protection page/);
+        assert.doesNotMatch(error.message, /private details/);
+        return true;
+    });
+});
+
 test('parses the saved DTEK page with both days and all groups', () => {
     const html = fs.readFileSync(path.join(__dirname, 'dtek-page.html'), 'utf8');
     const result = runProcessor({}, html);
