@@ -1,9 +1,9 @@
 {
-  "checkedAt": "2026-11-05T04:05:26.766Z",
-  "updated": [],
-  "errors": {
-    "address": "Upstream HTTP 403",
-    "schedule": "Upstream HTTP 403",
-    "yasno": "Upstream HTTP 403"
-  }
+  "checkedAt": "2026-11-05T04:10:37.396Z",
+  "updated": [
+    "yasno",
+    "schedule",
+    "address"
+  ],
+  "errors": {}
 }
