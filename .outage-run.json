@@ -1,11 +1,10 @@
 {
-  "checkedAt": "2026-11-06T13:48:26.013Z",
+  "checkedAt": "2026-11-06T13:54:44.524Z",
   "updated": [
     "yasno",
-    "address"
+    "address",
+    "schedule"
   ],
-  "errors": {
-    "schedule": "Could not find DisconSchedule.fact in the DTEK response (28840 bytes; title: Планові і аварійні відключення | Офіційний сайт ДТЕК; possible bot-protection page)"
-  },
+  "errors": {},
   "notify": true
 }
