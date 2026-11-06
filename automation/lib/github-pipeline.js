@@ -3,6 +3,19 @@ const { buildNotification, sendNotification } = require('./notification-core');
 
 const FILES = { schedule: 'dtek-outages.json', address: 'dtek-address.json', yasno: 'outages.json' };
 
+// A partial upstream outage is degraded service, not a failed publication.
+function collectionFailed(run) {
+    return run.updated.length === 0 && Object.keys(run.errors).length > 0;
+}
+
+function reportSourceErrors(errors) {
+    for (const [source, message] of Object.entries(errors)) {
+        // Escape workflow command data from untrusted upstream error messages.
+        const detail = `${source}: ${message}`.replaceAll('%', '%25').replaceAll('\r', '%0D').replaceAll('\n', '%0A');
+        console.warn(`::warning::${detail}`);
+    }
+}
+
 async function collectData(previous, loaders, { sleep = delay } = {}) {
     const data = { ...previous };
     const errors = {};
@@ -73,4 +86,4 @@ async function notifySources({ data, updated, states, config, apiKey, acknowledg
     return errors;
 }
 
-module.exports = { FILES, collectData, waitForPublication, notifySources };
+module.exports = { FILES, collectData, collectionFailed, reportSourceErrors, waitForPublication, notifySources };

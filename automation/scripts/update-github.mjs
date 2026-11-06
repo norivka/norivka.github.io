@@ -4,7 +4,7 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { fetchSchedule, fetchAddress, fetchYasno } from '../src/providers.ts';
 const require = createRequire(import.meta.url);
-const { FILES, collectData, waitForPublication, notifySources } = require('../lib/github-pipeline.js');
+const { FILES, collectData, collectionFailed, reportSourceErrors, waitForPublication, notifySources } = require('../lib/github-pipeline.js');
 const config = require('../push-config.json');
 const [phase, statePath, sitePath] = process.argv.slice(2);
 if (!['fetch', 'publish', 'notify', 'verify'].includes(phase) || !statePath || !sitePath) throw new Error('Usage: update-github.mjs fetch|publish|notify|verify STATE SITE');
@@ -39,6 +39,7 @@ if (phase === 'fetch') {
     write(join(state, 'run.json'), { checkedAt: now.toISOString(), updated: result.updated, errors: result.errors, notify: process.env.NOTIFY !== 'false' });
     commit(state, 'outage-state', ['data', 'run.json'], 'Update collected outage data');
     console.log(JSON.stringify({ updated: result.updated, errors: result.errors }));
+    reportSourceErrors(result.errors);
 } else if (phase === 'publish') {
     mkdirSync(join(site, 'data'), { recursive: true });
     for (const file of Object.keys(loadData())) copyFileSync(join(state, 'data', file), join(site, 'data', file));
@@ -47,7 +48,7 @@ if (phase === 'fetch') {
     // Branch-based Pages starts automatically when main is pushed.
     // An additional POST /pages/builds would duplicate the same deployment.
     console.log('Published outage data to main');
-    if (Object.keys(read(join(state, 'run.json')).errors).length) process.exitCode = 1;
+    if (collectionFailed(read(join(state, 'run.json')))) process.exitCode = 1;
 } else {
     // Read the deployed snapshot, while acknowledgements use the latest state branch.
     if (!existsSync(join(site, '.outage-run.json'))) {
@@ -73,5 +74,6 @@ if (phase === 'fetch') {
         });
     }
     console.log(JSON.stringify({ publication: 'confirmed', fetchErrors: run.errors, notificationErrors }));
-    if (Object.keys(run.errors).length || Object.keys(notificationErrors).length) process.exitCode = 1;
+    // Fetch failures belong to collection; notification success is independent.
+    if (Object.keys(notificationErrors).length) process.exitCode = 1;
 }

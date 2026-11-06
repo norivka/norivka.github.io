@@ -1,10 +1,38 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { collectData, waitForPublication, notifySources } = require('./github-pipeline');
+const { collectData, collectionFailed, waitForPublication, notifySources } = require('./github-pipeline');
 const config = require('../push-config.json');
 const empty = { days: [], lastUpdate: '2026-11-05T00:00:00Z' };
 const address = { sub_type: '', start_date: '', end_date: '', lastUpdate: empty.lastUpdate };
 const initial = { days: [], address, revision: 'initial', addressNotificationVersion: 1 };
+
+test('collection fails only when no source could update', () => {
+    assert.equal(collectionFailed({ updated: ['schedule', 'address'], errors: { yasno: 'HTTP 500' } }), false);
+    assert.equal(collectionFailed({ updated: ['yasno'], errors: { schedule: 'HTTP 500', address: 'HTTP 500' } }), false);
+    assert.equal(collectionFailed({ updated: [], errors: { yasno: 'HTTP 500' } }), true);
+    assert.equal(collectionFailed({ updated: ['schedule', 'address', 'yasno'], errors: {} }), false);
+});
+
+test('Yasno failure preserves its data and does not prevent DTEK publication and push', async () => {
+    let attempts = 0;
+    const result = await collectData({ 'outages.json': empty }, {
+        schedule: async () => empty,
+        address: async () => ({ ...address, sub_type: 'Екстрені відключення' }),
+        yasno: async () => { attempts++; throw new Error('Upstream HTTP 503'); },
+    }, { sleep: async () => {} });
+    assert.equal(attempts, 3);
+    assert.equal(result.data['outages.json'], empty);
+    assert.equal(collectionFailed(result), false);
+    let published = false;
+    const accepted = [];
+    const errors = await notifySources({ ...result, states: { dtek: initial }, config, apiKey: 'test',
+        wait: async data => { assert.deepEqual(data, result.data); published = true; },
+        send: async () => { assert.equal(published, true); return { delivered: true, id: 'accepted' }; },
+        acknowledge: async source => { accepted.push(source); },
+    });
+    assert.deepEqual(errors, {});
+    assert.deepEqual(accepted, ['dtek']);
+});
 
 test('failed sources retain their timestamp while successful sources update independently', async () => {
     const previous = { 'dtek-outages.json': empty, 'dtek-address.json': address };
