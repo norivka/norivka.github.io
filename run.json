@@ -1,11 +1,11 @@
 {
-  "checkedAt": "2026-11-06T13:42:24.567Z",
+  "checkedAt": "2026-11-06T13:48:26.013Z",
   "updated": [
-    "yasno"
+    "yasno",
+    "address"
   ],
   "errors": {
-    "schedule": "Upstream HTTP 500",
-    "address": "Upstream HTTP 500"
+    "schedule": "Could not find DisconSchedule.fact in the DTEK response (28840 bytes; title: Планові і аварійні відключення | Офіційний сайт ДТЕК; possible bot-protection page)"
   },
   "notify": true
 }
