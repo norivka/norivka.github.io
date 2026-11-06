@@ -29,6 +29,11 @@ jobs:
         with:
           node-version: '24'
           package-manager-cache: false
+      - name: Prepare optional browser fallback
+        continue-on-error: true
+        timeout-minutes: 3
+        working-directory: site/automation
+        run: npm ci --ignore-scripts
       - name: Fetch and save data (keep previous data on source failures)
         env:
           NOTIFY: ${{ inputs.notify }}

@@ -6,6 +6,66 @@ const empty = { days: [], lastUpdate: '2026-11-05T00:00:00Z' };
 const address = { sub_type: '', start_date: '', end_date: '', lastUpdate: empty.lastUpdate };
 const initial = { days: [], address, revision: 'initial', addressNotificationVersion: 1 };
 
+test('one browser session recovers both failed DTEK sources after HTTP retries', async () => {
+    let attempts = 0;
+    let sessions = 0;
+    const fail = async () => { attempts++; throw new Error('blocked'); };
+    const result = await collectData({}, { schedule: fail, address: fail, yasno: async () => empty }, {
+        sleep: async () => {}, fallback: async () => {
+            sessions++;
+            assert.equal(attempts, 6);
+            return { steps: [{ name: 'schedule', ok: true, data: empty }, { name: 'address', ok: true, data: address }] };
+        },
+    });
+    assert.equal(sessions, 1);
+    assert.deepEqual(result.errors, {});
+    assert.deepEqual(result.httpErrors, { schedule: 'blocked', address: 'blocked' });
+    assert.deepEqual(result.recovered, ['schedule', 'address']);
+    assert.deepEqual(result.updated.sort(), ['address', 'schedule', 'yasno']);
+    assert.deepEqual(result.data, { 'dtek-outages.json': empty, 'dtek-address.json': address, 'outages.json': empty });
+});
+
+test('browser partial success preserves failed data and never replaces successful HTTP data', async () => {
+    const fresh = { ...empty, lastUpdate: '2026-11-06T00:00:00Z' };
+    const fail = async () => { throw new Error('blocked'); };
+    const fallback = async () => ({ steps: [
+        { name: 'schedule', ok: true, data: empty },
+        { name: 'address', ok: false, error: 'No CSRF' },
+    ] });
+    const result = await collectData({ 'dtek-address.json': address }, {
+        schedule: async () => fresh, address: fail,
+    }, { sleep: async () => {}, fallback });
+    assert.equal(result.data['dtek-outages.json'], fresh);
+    assert.equal(result.data['dtek-address.json'], address);
+    assert.deepEqual(result.updated, ['schedule']);
+    assert.match(result.errors.address, /blocked; browser: No CSRF/);
+    const partial = await collectData({ 'dtek-address.json': address }, { schedule: fail, address: fail }, {
+        sleep: async () => {}, fallback,
+    });
+    assert.deepEqual(partial.recovered, ['schedule']);
+    assert.equal(partial.data['dtek-address.json'], address);
+    assert.equal(collectionFailed(partial), false);
+});
+
+test('browser setup failure or timeout retains data and successful Yasno update', async () => {
+    const result = await collectData({ 'dtek-outages.json': empty }, {
+        schedule: async () => { throw new Error('HTTP 500'); }, yasno: async () => empty,
+    }, { sleep: async () => {}, fallback: async () => { throw new Error('timeout'); } });
+    assert.equal(result.data['dtek-outages.json'], empty);
+    assert.deepEqual(result.updated, ['yasno']);
+    assert.equal(result.errors.schedule, 'HTTP 500; browser: timeout');
+    assert.equal(collectionFailed(result), false);
+});
+
+test('Yasno failure alone never starts a browser', async () => {
+    const result = await collectData({}, {
+        schedule: async () => empty, address: async () => address,
+        yasno: async () => { throw new Error('HTTP 500'); },
+    }, { sleep: async () => {}, fallback: async () => assert.fail('unexpected browser') });
+    assert.deepEqual(result.recovered, []);
+    assert.deepEqual(result.errors, { yasno: 'HTTP 500' });
+});
+
 test('collection fails only when no source could update', () => {
     assert.equal(collectionFailed({ updated: ['schedule', 'address'], errors: { yasno: 'HTTP 500' } }), false);
     assert.equal(collectionFailed({ updated: ['yasno'], errors: { schedule: 'HTTP 500', address: 'HTTP 500' } }), false);

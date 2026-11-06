@@ -3,6 +3,7 @@ import { resolve, join } from 'node:path';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { fetchSchedule, fetchAddress, fetchYasno } from '../src/providers.ts';
+import { fetchDtekBrowser } from './dtek-browser-fallback.mjs';
 const require = createRequire(import.meta.url);
 const { FILES, collectData, collectionFailed, reportSourceErrors, waitForPublication, notifySources } = require('../lib/github-pipeline.js');
 const config = require('../push-config.json');
@@ -33,12 +34,14 @@ if (phase === 'fetch') {
     const now = new Date();
     const result = await collectData(loadData(), {
         schedule: () => fetchSchedule(now), address: () => fetchAddress(now), yasno: () => fetchYasno(now),
-    });
+    }, { fallback: fetchDtekBrowser });
     mkdirSync(join(state, 'data'), { recursive: true });
     for (const [file, data] of Object.entries(result.data)) write(join(state, 'data', file), data);
-    write(join(state, 'run.json'), { checkedAt: now.toISOString(), updated: result.updated, errors: result.errors, notify: process.env.NOTIFY !== 'false' });
+    write(join(state, 'run.json'), { checkedAt: now.toISOString(), updated: result.updated,
+        errors: result.errors, httpErrors: result.httpErrors, recovered: result.recovered,
+        notify: process.env.NOTIFY !== 'false' });
     commit(state, 'outage-state', ['data', 'run.json'], 'Update collected outage data');
-    console.log(JSON.stringify({ updated: result.updated, errors: result.errors }));
+    console.log(JSON.stringify({ updated: result.updated, errors: result.errors, recovered: result.recovered }));
     reportSourceErrors(result.errors);
 } else if (phase === 'publish') {
     mkdirSync(join(site, 'data'), { recursive: true });

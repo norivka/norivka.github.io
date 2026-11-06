@@ -16,7 +16,7 @@ function reportSourceErrors(errors) {
     }
 }
 
-async function collectData(previous, loaders, { sleep = delay } = {}) {
+async function collectData(previous, loaders, { sleep = delay, fallback } = {}) {
     const data = { ...previous };
     const errors = {};
     const updated = [];
@@ -32,7 +32,26 @@ async function collectData(previous, loaders, { sleep = delay } = {}) {
             }
         }
     }));
-    return { data, errors, updated };
+    const httpErrors = { ...errors };
+    const recovered = [];
+    const failedDtek = ['schedule', 'address'].filter(key => errors[key]);
+    if (fallback && failedDtek.length) {
+        try {
+            const report = await fallback();
+            for (const key of failedDtek) {
+                const step = report.steps?.find(step => step.name === key);
+                if (step?.ok && step.data) {
+                    data[FILES[key]] = step.data;
+                    updated.push(key);
+                    recovered.push(key);
+                    delete errors[key];
+                } else errors[key] += `; browser: ${step?.error || 'No usable data'}`;
+            }
+        } catch (error) {
+            for (const key of failedDtek) errors[key] += `; browser: ${error.message || 'Fallback failed'}`;
+        }
+    }
+    return { data, errors, updated, httpErrors, recovered };
 }
 
 async function waitForPublication(data, siteUrl, {

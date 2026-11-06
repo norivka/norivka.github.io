@@ -15,7 +15,11 @@ jobs:
           cache-dependency-path: automation/package-lock.json
       - run: npm ci
         working-directory: automation
-      - run: npx playwright install --with-deps chromium
-        working-directory: automation
       - name: Probe DTEK in Chromium with a shared browser session
-        run: node automation/scripts/diagnose-dtek-browser.mjs
+        run: |
+          node --input-type=module <<'JS'
+          import { fetchDtekBrowser } from './automation/scripts/dtek-browser-fallback.mjs';
+          const report = await fetchDtekBrowser();
+          console.log(JSON.stringify(report, null, 2));
+          if (report.steps.some(step => !step.ok)) process.exitCode = 1;
+          JS

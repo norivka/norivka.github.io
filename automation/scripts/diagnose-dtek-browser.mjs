@@ -15,7 +15,9 @@ try {
     });
     report.httpStatus = response?.status();
     try {
-        await page.waitForFunction(() => Boolean(globalThis.DisconSchedule?.fact), null, { timeout: 45000 });
+        await page.waitForFunction(() => [...document.scripts].some(script =>
+            /DisconSchedule\.fact\s*=/.test(script.textContent)) &&
+            Boolean(document.querySelector('meta[name="csrf-token"]')), null, { timeout: 45000 });
     } catch { /* Record the resulting page even if the challenge never clears. */ }
     const html = await page.content();
     report.page = {
@@ -52,5 +54,6 @@ try {
 } finally {
     await browser.close();
 }
-console.log(JSON.stringify(report, null, 2));
+console.log(process.argv.includes('--machine')
+    ? `DTEK_BROWSER_RESULT=${JSON.stringify(report)}` : JSON.stringify(report, null, 2));
 if (report.steps.some(step => !step.ok)) process.exitCode = 1;
