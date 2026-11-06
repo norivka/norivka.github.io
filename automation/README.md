@@ -117,6 +117,12 @@ node scripts/admin.mjs dispatch
 [cf у CI](https://developers.cloudflare.com/cf/ci/),
 [GitHub Pages limits](https://docs.github.com/en/pages/getting-started-with-github-pages/github-pages-limits).
 
+`Diagnose DTEK browser` — окрема ручна перевірка через Playwright Chromium.
+Вона чекає до 45 секунд на графік, потім робить адресний POST у тій самій
+браузерній сесії. У журналі — HTTP-статус сторінки, ознаки захисту та
+результати обох парсерів; cookies і CSRF-токени не експортуються.
+Це діагностика без публікації даних і push, не резервний отримувач у production.
+
 ## Контроль збоїв
 
 `Check outage update health` запускається незалежно від Worker за розкладом

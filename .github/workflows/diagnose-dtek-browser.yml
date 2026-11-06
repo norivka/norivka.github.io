@@ -1,0 +1,21 @@
+name: Diagnose DTEK browser
+on: workflow_dispatch
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: automation/package-lock.json
+      - run: npm ci
+        working-directory: automation
+      - run: npx playwright install --with-deps chromium
+        working-directory: automation
+      - name: Probe DTEK in Chromium with a shared browser session
+        run: node automation/scripts/diagnose-dtek-browser.mjs
