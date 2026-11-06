@@ -6,8 +6,10 @@ export async function fetchDtekBrowser() {
     // so it cannot prevent publication of other successful sources.
     const cwd = fileURLToPath(new URL('..', import.meta.url));
     console.log('DTEK HTTP failed; preparing Chromium fallback');
-    execFileSync(process.execPath, ['node_modules/playwright/cli.js', 'install', '--with-deps', 'chromium'], {
-        cwd, timeout: 180000, stdio: 'inherit',
+    // ubuntu-24.04 hosted runners already have the Chromium runtime libraries.
+    // Avoid apt/font downloads on every refresh; only the headless binary is needed.
+    execFileSync(process.execPath, ['node_modules/playwright/cli.js', 'install', '--only-shell', 'chromium'], {
+        cwd, timeout: 180000, killSignal: 'SIGKILL', stdio: 'inherit',
     });
     const result = spawnSync(process.execPath, [
         fileURLToPath(new URL('./diagnose-dtek-browser.mjs', import.meta.url)), '--machine',
