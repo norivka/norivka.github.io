@@ -66,7 +66,7 @@ test('builds web push with the correct source URL and subscriber audience', () =
     const notification = buildNotification('dtek', empty, schedule, config);
     assert.deepEqual(notification.payload.included_segments, ['Total Subscriptions']);
     assert.equal(notification.payload.isAnyWeb, true);
-    assert.equal(notification.payload.ttl, 7200);
+    assert.equal(notification.payload.ttl, 3600);
     assert.equal(notification.payload.url, 'https://norivka.github.io/?source=dtek');
     assert.equal(notification.payload.contents.uk, 'нові графіки відключень');
     assert.deepEqual(notification.payload.headings, { en: 'ДТЕК', uk: 'ДТЕК' });
@@ -83,6 +83,8 @@ test('schedule publication, modification, and cancellation use distinct body tex
     assert.equal(first.payload.contents.uk, 'нові графіки відключень');
     assert.equal(modified.payload.contents.uk, 'зміни у графіках відключень');
     assert.equal(cancelled.payload.contents.uk, 'скасовано графіки відключень');
+    assert.equal(modified.payload.ttl, 300);
+    assert.equal(cancelled.payload.ttl, 300);
     for (const notification of [first, modified, cancelled]) {
         assert.deepEqual(notification.payload.headings, { en: 'ДТЕК', uk: 'ДТЕК' });
     }
@@ -231,12 +233,14 @@ test('stabilization notices do not suppress simultaneous schedule notifications'
     const first = buildNotification('dtek', empty, { days: [] }, config, address);
     const combined = buildNotification('dtek', first.state, schedule, config, { ...address, end_date: '22:00 01.11.2026' });
     assert.equal(combined.payload.contents.uk, 'нові графіки відключень');
+    assert.equal(combined.payload.ttl, 3600);
     assert.deepEqual(combined.payload.headings, { en: 'ДТЕК', uk: 'ДТЕК' });
     assert.equal(buildNotification('dtek', combined.state, schedule, config, {
         ...combined.state.address, end_date: '23:00 01.11.2026'
     }).payload, null);
     const bothNew = buildNotification('dtek', empty, schedule, config, address);
     assert.ok(bothNew.payload);
+    assert.equal(bothNew.payload.ttl, 300);
 });
 
 test('notice type changes trigger one push even when the times stay the same', () => {

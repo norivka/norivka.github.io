@@ -92,7 +92,7 @@ function buildNotification(source, previousState, data, config, addressData = nu
             headings: { en: heading, uk: heading },
             contents: { en: body, uk: body },
             url: url.href,
-            ttl: 2 * 60 * 60,
+            ttl: !noticeKind && scheduleKind === 'published' ? 60 * 60 : 5 * 60,
             idempotency_key: id
         }
     };
