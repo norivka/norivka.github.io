@@ -1,12 +1,16 @@
 {
-  "checkedAt": "2026-11-09T16:18:33.516Z",
+  "checkedAt": "2026-11-09T16:24:34.794Z",
   "updated": [
     "yasno",
-    "schedule",
-    "address"
+    "address",
+    "schedule"
   ],
   "errors": {},
-  "httpErrors": {},
-  "recovered": [],
+  "httpErrors": {
+    "schedule": "Could not find DisconSchedule.fact in the DTEK response (908 bytes; possible bot-protection page)"
+  },
+  "recovered": [
+    "schedule"
+  ],
   "notify": true
 }
