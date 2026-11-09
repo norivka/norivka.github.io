@@ -1,16 +1,12 @@
 {
-  "checkedAt": "2026-11-09T05:24:33.574Z",
-  "updated": [],
-  "errors": {
-    "address": "Upstream HTTP 403; browser: page.evaluate: Error: No CSRF token in browser session\n    at eval (eval at evaluate (:370:30), <anonymous>:3:30)\n    at UtilityScript.evaluate (<anonymous>:372:16)\n    at UtilityScript.<anonymous> (<anonymous>:1:44)",
-    "schedule": "Upstream HTTP 403; browser: Could not find DisconSchedule.fact in the DTEK response (892 bytes; possible bot-protection page)",
-    "yasno": "Upstream HTTP 403"
-  },
-  "httpErrors": {
-    "address": "Upstream HTTP 403",
-    "schedule": "Upstream HTTP 403",
-    "yasno": "Upstream HTTP 403"
-  },
+  "checkedAt": "2026-11-09T05:30:31.089Z",
+  "updated": [
+    "yasno",
+    "schedule",
+    "address"
+  ],
+  "errors": {},
+  "httpErrors": {},
   "recovered": [],
   "notify": true
 }
