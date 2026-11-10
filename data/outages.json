@@ -1,8 +1,23 @@
 {
-  "lastUpdate": "2026-11-10T04:24:32.228Z",
-  "days": [],
+  "lastUpdate": "2026-11-10T04:30:31.090Z",
+  "days": [
+    {
+      "date": "2026-11-10T00:00:00+02:00",
+      "isToday": true,
+      "outages": [
+        {
+          "start": 270,
+          "end": 510
+        },
+        {
+          "start": 900,
+          "end": 1350
+        }
+      ]
+    }
+  ],
   "today": {
     "date": "2026-11-10T00:00:00+02:00",
-    "status": "WaitingForSchedule"
+    "status": "ScheduleApplies"
   }
 }
