@@ -8,6 +8,19 @@
           "end": 120
         }
       ]
+    },
+    {
+      "date": "2026-11-12",
+      "outages": [
+        {
+          "start": 540,
+          "end": 780
+        },
+        {
+          "start": 1170,
+          "end": 1440
+        }
+      ]
     }
   ],
   "address": {
@@ -16,5 +29,5 @@
     "end_date": ""
   },
   "addressNotificationVersion": 1,
-  "revision": "a60b3ffc-d1d7-4bbe-a96b-0c8c2d541cf1"
+  "revision": "8e02b32a-a90d-4ffa-acb5-dc46b3954da9"
 }
