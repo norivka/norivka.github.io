@@ -114,13 +114,14 @@ function renderSchedule(data) {
     content.innerHTML = html;
 }
 
-function formatAddressDate(value) {
+function formatAddressDate(value, compact = false) {
     // Both formats represent local Kyiv time, without a UTC offset.
     const timeFirst = /^(\d{2}:\d{2}) (\d{2}\.\d{2}\.\d{4})$/.exec(value);
     if (timeFirst) value = `${timeFirst[2]} ${timeFirst[1]}`;
     const match = /^(\d{2})\.(\d{2})\.(\d{4})[ T](\d{2}):(\d{2})(?::\d{2})?$/.exec(value);
     if (!match) return value;
     const [, day, month, year, hour, minute] = match;
+    if (compact) return `${day}.${month} ${hour}:${minute}`;
     return `${day}.${month}.${year}, ${hour}:${minute}`;
 }
 
@@ -140,8 +141,9 @@ function renderDtekNotice(data) {
     }
 
     if (hasNotice) addLine(`⚠️ ${data.sub_type || 'Відключення електроенергії'}`, 'address-notice-title');
-    if (data.start_date) addLine(`Початок: ${formatAddressDate(data.start_date)}`);
-    if (data.end_date) addLine(`Завершення: ${formatAddressDate(data.end_date)}`);
+    const isEmergency = /аварійн|екстрен/iu.test(data.sub_type || '');
+    if (data.start_date) addLine(`Початок: ${formatAddressDate(data.start_date, isEmergency)}`);
+    if (data.end_date) addLine(`Завершення: ${isEmergency ? 'орієнтовно ' : ''}${formatAddressDate(data.end_date, isEmergency)}`);
     if (data.lastUpdate) {
         const updated = data.sourceUpdate ? formatAddressDate(data.sourceUpdate) :
             new Date(data.lastUpdate).toLocaleString('uk-UA', { timeZone: 'Europe/Kyiv' });

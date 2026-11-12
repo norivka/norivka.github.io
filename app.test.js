@@ -53,8 +53,8 @@ test('schedule download failure still displays the independent address warning',
     const text = noticeText(notice);
     assert.equal(notice.children[0].textContent, `⚠️ ${warning.sub_type}`);
     assert.equal(text.split(warning.sub_type).length - 1, 1);
-    assert.match(text, /31\.10\.2026, 23:16/);
-    assert.match(text, /01\.11\.2026, 10:50/);
+    assert.equal(notice.children[1].textContent, 'Початок: 31.10 23:16');
+    assert.equal(notice.children[2].textContent, 'Завершення: орієнтовно 01.11 10:50');
     assert.match(text, /Інформацію оновлено:.*08:31/);
 });
 
