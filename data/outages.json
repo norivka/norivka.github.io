@@ -1,27 +1,9 @@
 {
-  "lastUpdate": "2026-11-13T22:00:34.303Z",
+  "lastUpdate": "2026-11-13T22:06:28.344Z",
   "days": [
     {
-      "date": "2026-11-13T00:00:00+02:00",
-      "isToday": true,
-      "outages": [
-        {
-          "start": 0,
-          "end": 30
-        },
-        {
-          "start": 510,
-          "end": 600
-        },
-        {
-          "start": 990,
-          "end": 1230
-        }
-      ]
-    },
-    {
       "date": "2026-11-14T00:00:00+02:00",
-      "isToday": false,
+      "isToday": true,
       "outages": [
         {
           "start": 810,
@@ -31,7 +13,7 @@
     }
   ],
   "today": {
-    "date": "2026-11-13T00:00:00+02:00",
+    "date": "2026-11-14T00:00:00+02:00",
     "status": "ScheduleApplies"
   }
 }
