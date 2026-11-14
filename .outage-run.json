@@ -1,15 +1,15 @@
 {
-  "checkedAt": "2026-11-14T04:42:27.708Z",
+  "checkedAt": "2026-11-14T04:48:29.564Z",
   "updated": [
     "yasno",
     "address"
   ],
   "errors": {
-    "schedule": "Upstream HTTP 500; browser: Could not find DisconSchedule.fact in the DTEK response (362276 bytes; title: Database Exception (#2006); possible bot-protection page)"
+    "schedule": "Upstream HTTP 500; browser: Could not find DisconSchedule.fact in the DTEK response (362147 bytes; title: Database Exception (#2006); possible bot-protection page)"
   },
   "httpErrors": {
-    "address": "Upstream HTTP 500",
-    "schedule": "Upstream HTTP 500"
+    "schedule": "Upstream HTTP 500",
+    "address": "Upstream HTTP 500"
   },
   "recovered": [
     "address"
