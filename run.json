@@ -1,10 +1,10 @@
 {
-  "checkedAt": "2026-11-14T11:42:39.188Z",
+  "checkedAt": "2026-11-14T11:48:30.053Z",
   "updated": [
     "yasno"
   ],
   "errors": {
-    "schedule": "Upstream HTTP 502; browser: Could not find DisconSchedule.fact in the DTEK response (292 bytes; title: 502 Bad Gateway; possible bot-protection page)",
+    "schedule": "Upstream HTTP 502; browser: Could not find DisconSchedule.fact in the DTEK response (293 bytes; title: 502 Bad Gateway; possible bot-protection page)",
     "address": "Upstream HTTP 502; browser: page.evaluate: Error: No CSRF token in browser session\n    at eval (eval at evaluate (:370:30), <anonymous>:3:30)\n    at UtilityScript.evaluate (<anonymous>:372:16)\n    at UtilityScript.<anonymous> (<anonymous>:1:44)"
   },
   "httpErrors": {
