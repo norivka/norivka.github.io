@@ -1,16 +1,12 @@
 {
-  "checkedAt": "2026-11-14T09:30:30.193Z",
+  "checkedAt": "2026-11-14T09:36:29.765Z",
   "updated": [
     "yasno",
     "schedule",
     "address"
   ],
   "errors": {},
-  "httpErrors": {
-    "address": "Upstream HTTP 400"
-  },
-  "recovered": [
-    "address"
-  ],
+  "httpErrors": {},
+  "recovered": [],
   "notify": true
 }
