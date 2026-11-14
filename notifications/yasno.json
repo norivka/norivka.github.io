@@ -2,12 +2,7 @@
   "days": [
     {
       "date": "2026-11-14",
-      "outages": [
-        {
-          "start": 810,
-          "end": 1050
-        }
-      ]
+      "outages": []
     }
   ],
   "address": {
@@ -16,5 +11,5 @@
     "end_date": ""
   },
   "addressNotificationVersion": 1,
-  "revision": "22a7f02a-f162-4fb4-a752-ca125f1088ef"
+  "revision": "9153a6dd-2d29-40e3-8579-62590a51935f"
 }
