@@ -1,12 +1,15 @@
 {
-  "checkedAt": "2026-11-14T12:48:29.185Z",
+  "checkedAt": "2026-11-14T12:54:32.050Z",
   "updated": [
     "yasno",
-    "schedule",
-    "address"
+    "schedule"
   ],
-  "errors": {},
-  "httpErrors": {},
+  "errors": {
+    "address": "Upstream HTTP 400; browser: page.evaluate: Error: Address HTTP 400\n    at eval (eval at evaluate (:370:30), <anonymous>:12:37)\n    at async <anonymous>:381:23"
+  },
+  "httpErrors": {
+    "address": "Upstream HTTP 400"
+  },
   "recovered": [],
   "notify": true
 }
