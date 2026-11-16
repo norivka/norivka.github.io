@@ -1,16 +1,12 @@
 {
-  "checkedAt": "2026-11-16T16:36:34.863Z",
+  "checkedAt": "2026-11-16T17:49:50.490Z",
   "updated": [
-    "yasno"
+    "yasno",
+    "schedule",
+    "address"
   ],
-  "errors": {
-    "schedule": "The operation was aborted due to timeout; browser: No usable data",
-    "address": "The operation was aborted due to timeout; browser: No usable data"
-  },
-  "httpErrors": {
-    "schedule": "The operation was aborted due to timeout",
-    "address": "The operation was aborted due to timeout"
-  },
+  "errors": {},
+  "httpErrors": {},
   "recovered": [],
   "notify": true
 }
