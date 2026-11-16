@@ -1,9 +1,9 @@
 {
-  "checkedAt": "2026-11-16T02:30:37.461Z",
+  "checkedAt": "2026-11-16T02:36:33.914Z",
   "updated": [
     "yasno",
-    "schedule",
-    "address"
+    "address",
+    "schedule"
   ],
   "errors": {},
   "httpErrors": {},
