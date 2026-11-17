@@ -1,18 +1,16 @@
 {
-  "checkedAt": "2026-11-17T17:00:47.471Z",
+  "checkedAt": "2026-11-17T17:06:41.744Z",
   "updated": [
-    "yasno",
-    "schedule",
-    "address"
+    "yasno"
   ],
-  "errors": {},
+  "errors": {
+    "schedule": "Could not find DisconSchedule.fact in the DTEK response (949 bytes; possible bot-protection page); browser: Could not find DisconSchedule.fact in the DTEK response (982 bytes; possible bot-protection page)",
+    "address": "No CSRF token in DTEK session page (possible bot-protection page); browser: page.evaluate: Error: No CSRF token in browser session\n    at eval (eval at evaluate (:370:30), <anonymous>:3:30)\n    at UtilityScript.evaluate (<anonymous>:372:16)\n    at UtilityScript.<anonymous> (<anonymous>:1:44)"
+  },
   "httpErrors": {
-    "schedule": "Could not find DisconSchedule.fact in the DTEK response (957 bytes; possible bot-protection page)",
+    "schedule": "Could not find DisconSchedule.fact in the DTEK response (949 bytes; possible bot-protection page)",
     "address": "No CSRF token in DTEK session page (possible bot-protection page)"
   },
-  "recovered": [
-    "schedule",
-    "address"
-  ],
+  "recovered": [],
   "notify": true
 }
