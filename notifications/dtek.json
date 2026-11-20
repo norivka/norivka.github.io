@@ -6,6 +6,10 @@
         {
           "start": 450,
           "end": 600
+        },
+        {
+          "start": 990,
+          "end": 1230
         }
       ]
     }
@@ -16,5 +20,5 @@
     "end_date": ""
   },
   "addressNotificationVersion": 1,
-  "revision": "be57ca4e-941b-47bc-bf26-9ac730887ddb"
+  "revision": "288aeab2-a367-46c7-8ba2-a428baac5d89"
 }
