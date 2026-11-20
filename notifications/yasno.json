@@ -1,24 +1,10 @@
 {
-  "days": [
-    {
-      "date": "2026-11-20",
-      "outages": [
-        {
-          "start": 360,
-          "end": 600
-        },
-        {
-          "start": 990,
-          "end": 1230
-        }
-      ]
-    }
-  ],
+  "days": [],
   "address": {
-    "sub_type": "",
+    "sub_type": "Екстрені відключення",
     "start_date": "",
     "end_date": ""
   },
   "addressNotificationVersion": 1,
-  "revision": "046656f0-6194-4a9e-8e38-9df17c459a2e"
+  "revision": "0b2886d4-8b61-4498-9c96-df603ecabc1a"
 }
