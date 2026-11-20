@@ -15,10 +15,10 @@
     }
   ],
   "address": {
-    "sub_type": "",
-    "start_date": "",
-    "end_date": ""
+    "sub_type": "Аварійні ремонтні роботи",
+    "start_date": "12:16 20.11.2026",
+    "end_date": "16:17 20.11.2026"
   },
   "addressNotificationVersion": 1,
-  "revision": "288aeab2-a367-46c7-8ba2-a428baac5d89"
+  "revision": "4e9abe9f-386f-4307-a609-c9213a8b4a97"
 }
