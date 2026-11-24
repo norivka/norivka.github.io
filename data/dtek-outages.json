@@ -1,24 +1,10 @@
 {
   "source": "DTEK",
-  "lastUpdate": "2026-11-24T21:42:30.619Z",
+  "lastUpdate": "2026-11-24T22:00:41.926Z",
   "days": [
     {
-      "date": "2026-11-23T22:00:00.000Z",
-      "isToday": true,
-      "outages": [
-        {
-          "start": 360,
-          "end": 510
-        },
-        {
-          "start": 900,
-          "end": 1290
-        }
-      ]
-    },
-    {
       "date": "2026-11-24T22:00:00.000Z",
-      "isToday": false,
+      "isToday": true,
       "outages": [
         {
           "start": 720,
