@@ -5,11 +5,11 @@
       "outages": [
         {
           "start": 360,
-          "end": 690
+          "end": 510
         },
         {
           "start": 900,
-          "end": 1140
+          "end": 1320
         }
       ]
     }
@@ -20,5 +20,5 @@
     "end_date": ""
   },
   "addressNotificationVersion": 1,
-  "revision": "745c5aa7-fb6a-4e58-91c5-7f68c1df82f2"
+  "revision": "4c8d84b6-b351-4871-86ce-5907adaab8ad"
 }
