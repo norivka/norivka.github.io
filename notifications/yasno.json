@@ -9,7 +9,7 @@
         },
         {
           "start": 900,
-          "end": 1320
+          "end": 1350
         }
       ]
     }
@@ -20,5 +20,5 @@
     "end_date": ""
   },
   "addressNotificationVersion": 1,
-  "revision": "d90257b6-7b91-4c71-9ecd-0817c90ee120"
+  "revision": "597e31b0-d893-46c4-97b7-cddd56bc83f2"
 }
