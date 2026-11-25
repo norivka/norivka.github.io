@@ -1,18 +1,12 @@
 {
-  "checkedAt": "2026-11-25T07:18:39.302Z",
+  "checkedAt": "2026-11-25T07:24:31.538Z",
   "updated": [
     "yasno",
-    "schedule",
-    "address"
+    "address",
+    "schedule"
   ],
   "errors": {},
-  "httpErrors": {
-    "address": "No CSRF token in DTEK session page (possible bot-protection page)",
-    "schedule": "Could not find DisconSchedule.fact in the DTEK response (957 bytes; possible bot-protection page)"
-  },
-  "recovered": [
-    "schedule",
-    "address"
-  ],
+  "httpErrors": {},
+  "recovered": [],
   "notify": true
 }
