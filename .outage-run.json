@@ -1,14 +1,14 @@
 {
-  "checkedAt": "2026-11-26T23:24:28.838Z",
+  "checkedAt": "2026-11-26T23:30:27.441Z",
   "updated": [
     "yasno",
     "schedule"
   ],
   "errors": {
-    "address": "Invalid DTEK address response: expected fields for house 1; browser: Invalid DTEK address response: expected fields for house 1"
+    "address": "The operation was aborted due to timeout; browser: Invalid DTEK address response: expected fields for house 1"
   },
   "httpErrors": {
-    "address": "Invalid DTEK address response: expected fields for house 1"
+    "address": "The operation was aborted due to timeout"
   },
   "recovered": [],
   "notify": true
