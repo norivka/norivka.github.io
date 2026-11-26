@@ -4,16 +4,12 @@
       "date": "2026-11-26",
       "outages": [
         {
-          "start": 0,
-          "end": 150
+          "start": 600,
+          "end": 960
         },
         {
-          "start": 540,
-          "end": 780
-        },
-        {
-          "start": 1170,
-          "end": 1410
+          "start": 1140,
+          "end": 1380
         }
       ]
     }
@@ -24,5 +20,5 @@
     "end_date": ""
   },
   "addressNotificationVersion": 1,
-  "revision": "daf3ea6d-2c87-46eb-991f-fe76177a88e0"
+  "revision": "4c0f038f-c323-4098-99f2-ade31edb7c0b"
 }
