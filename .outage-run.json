@@ -1,12 +1,16 @@
 {
-  "checkedAt": "2026-11-26T00:00:38.079Z",
+  "checkedAt": "2026-11-26T00:06:29.766Z",
   "updated": [
     "yasno",
-    "schedule",
-    "address"
+    "address",
+    "schedule"
   ],
   "errors": {},
-  "httpErrors": {},
-  "recovered": [],
+  "httpErrors": {
+    "schedule": "The operation was aborted due to timeout"
+  },
+  "recovered": [
+    "schedule"
+  ],
   "notify": true
 }
