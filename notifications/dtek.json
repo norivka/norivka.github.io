@@ -19,10 +19,10 @@
     }
   ],
   "address": {
-    "sub_type": "",
-    "start_date": "",
-    "end_date": ""
+    "sub_type": "Екстренні відключення (Аварійне без застосування графіку погодинних відключень)",
+    "start_date": "13:04 27.11.2026",
+    "end_date": "23:30 27.11.2026"
   },
   "addressNotificationVersion": 1,
-  "revision": "5f91eb50-97b8-42f2-ab57-f68c481a3d39"
+  "revision": "b0c27f3f-a1bd-4057-a16a-b76634bca29d"
 }
