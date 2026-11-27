@@ -1,18 +1,15 @@
 {
-  "checkedAt": "2026-11-27T04:36:29.940Z",
+  "checkedAt": "2026-11-27T04:42:37.116Z",
   "updated": [
     "yasno",
     "schedule"
   ],
   "errors": {
-    "address": "No CSRF token in DTEK session page (possible bot-protection page); browser: Invalid DTEK address response: expected fields for house 1"
+    "address": "Invalid DTEK address response: expected fields for house 1; browser: Invalid DTEK address response: expected fields for house 1"
   },
   "httpErrors": {
-    "address": "No CSRF token in DTEK session page (possible bot-protection page)",
-    "schedule": "Could not find DisconSchedule.fact in the DTEK response (952 bytes; possible bot-protection page)"
+    "address": "Invalid DTEK address response: expected fields for house 1"
   },
-  "recovered": [
-    "schedule"
-  ],
+  "recovered": [],
   "notify": true
 }
