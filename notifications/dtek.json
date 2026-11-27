@@ -32,10 +32,10 @@
     }
   ],
   "address": {
-    "sub_type": "",
-    "start_date": "",
-    "end_date": ""
+    "sub_type": "Стабілізаційне відключення (Згідно графіку погодинних відключень)",
+    "start_date": "22:03 27.11.2026",
+    "end_date": "04:30 28.11.2026"
   },
   "addressNotificationVersion": 1,
-  "revision": "c023e774-74a4-447a-8dbc-75aff3038809"
+  "revision": "ac30a005-6f3b-4d40-9bec-314f73568ece"
 }
