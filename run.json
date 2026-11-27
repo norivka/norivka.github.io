@@ -1,14 +1,14 @@
 {
-  "checkedAt": "2026-11-27T04:24:38.787Z",
+  "checkedAt": "2026-11-27T04:30:36.166Z",
   "updated": [
     "yasno",
     "schedule"
   ],
   "errors": {
-    "address": "Invalid DTEK address response: expected fields for house 1; browser: Invalid DTEK address response: expected fields for house 1"
+    "address": "No CSRF token in DTEK session page (possible bot-protection page); browser: Invalid DTEK address response: expected fields for house 1"
   },
   "httpErrors": {
-    "address": "Invalid DTEK address response: expected fields for house 1"
+    "address": "No CSRF token in DTEK session page (possible bot-protection page)"
   },
   "recovered": [],
   "notify": true
