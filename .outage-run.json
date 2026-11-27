@@ -1,8 +1,8 @@
 {
-  "checkedAt": "2026-11-27T00:54:34.379Z",
+  "checkedAt": "2026-11-27T01:00:35.748Z",
   "updated": [
-    "yasno",
-    "schedule"
+    "schedule",
+    "yasno"
   ],
   "errors": {
     "address": "Invalid DTEK address response: expected fields for house 1; browser: Invalid DTEK address response: expected fields for house 1"
