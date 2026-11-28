@@ -1,6 +1,6 @@
 {
   "source": "DTEK",
-  "lastUpdate": "2026-11-28T10:00:39.045Z",
+  "lastUpdate": "2026-11-28T10:06:28.450Z",
   "schedules": {
     "1795816800": {
       "GPV1.1": {
@@ -494,5 +494,5 @@
       ]
     }
   ],
-  "groupCheckedAt": "2026-11-28T10:00:39.045Z"
+  "groupCheckedAt": "2026-11-28T10:06:28.450Z"
 }
