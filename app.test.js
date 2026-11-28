@@ -222,8 +222,8 @@ test('shows both fixed groups in order, using one complete provider response and
     assert.equal(indicator.hidden, true);
 });
 
-test('renders a single schedule update footer below the notification controls', () => {
+test('renders one update footer after the lower schedule inside the white container', () => {
     const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
     assert.equal(html.match(/id="(?:old-)?schedule-update"/g)?.length, 1);
-    assert.ok(html.indexOf('id="schedule-update"') > html.indexOf('id="notification-status"'));
+    assert.match(html, /id="old-content"[^>]*>[^<]*<\/div>\s*<\/section>\s*<footer id="schedule-update"[^>]*><\/footer>\s*<\/div>\s*<div class="notification-panel">/);
 });
