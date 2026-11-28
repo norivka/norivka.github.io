@@ -2,10 +2,11 @@ const fs = require('node:fs');
 const { setTimeout: delay } = require('node:timers/promises');
 const { scheduleSnapshot, addressNotice } = require('./schedule-changes');
 const { buildNotification, sendNotification } = require('./notification-core');
-const SOURCES = { dtek: { name: 'ДТЕК', file: 'data/dtek-outages.json' } };
+const { latestScheduleSource } = require('../../schedule-source');
+const scheduleFiles = { dtek: 'data/dtek-outages.json', yasno: 'data/outages.json' };
 
 async function waitForPublishedData(expected, siteUrl, {
-    fetchImpl = fetch, sleep = delay, log = console.log, clock = Date.now,
+    source = 'dtek', fetchImpl = fetch, sleep = delay, log = console.log, clock = Date.now,
     timeoutMs = 4 * 60 * 1000, intervalMs = 10000
 } = {}) {
     const snapshot = (data, address) => JSON.stringify({
@@ -16,7 +17,7 @@ async function waitForPublishedData(expected, siteUrl, {
     while (clock() < deadline) {
         try {
             const signal = AbortSignal.timeout(Math.max(1, Math.min(15000, deadline - clock())));
-            const [data, address] = await Promise.all(['data/dtek-outages.json', 'data/dtek-address.json'].map(async file => {
+            const [data, address] = await Promise.all([scheduleFiles[source], 'data/dtek-address.json'].map(async file => {
                 const url = new URL(file, siteUrl);
                 url.searchParams.set('t', clock());
                 const response = await fetchImpl(url.href, { cache: 'no-store', signal });
@@ -42,23 +43,27 @@ async function notifyScheduleChanges(source, {
     root = __dirname, apiKey = process.env.ONESIGNAL_REST_API_KEY, send = sendNotification,
     waitForPublication = waitForPublishedData, log = console.log, now = new Date()
 } = {}) {
-    if (!Object.hasOwn(SOURCES, source)) throw new Error('Only DTEK notifications are enabled');
+    if (!Object.hasOwn(scheduleFiles, source)) throw new Error('Unknown schedule source');
     const config = JSON.parse(fs.readFileSync(`${root}/push-config.json`, 'utf8'));
     if (!apiKey || !config.appId) {
         log('::warning::Push skipped: configure ONESIGNAL_REST_API_KEY and push-config.json');
         return;
     }
-    const statePath = `${root}/.github/notification-state/${source}.json`;
+    const statePath = `${root}/.github/notification-state/dtek.json`;
     const state = JSON.parse(fs.readFileSync(statePath, 'utf8'));
-    const data = JSON.parse(fs.readFileSync(`${root}/${SOURCES[source].file}`, 'utf8'));
-    const address = source === 'dtek'
-        ? JSON.parse(fs.readFileSync(`${root}/data/dtek-address.json`, 'utf8')) : null;
-    const notification = buildNotification(source, state, data, config, address, now);
+    const readSchedule = file => fs.existsSync(`${root}/${file}`)
+        ? JSON.parse(fs.readFileSync(`${root}/${file}`, 'utf8')) : null;
+    const dtek = readSchedule(scheduleFiles.dtek);
+    const yasno = readSchedule(scheduleFiles.yasno);
+    const selected = latestScheduleSource(dtek, yasno);
+    if (!selected) throw new Error('No published schedule');
+    const address = JSON.parse(fs.readFileSync(`${root}/data/dtek-address.json`, 'utf8'));
+    const notification = buildNotification(selected, state, selected === 'dtek' ? dtek : yasno, config, address, now);
     if (!notification) {
         log(`No schedule changes for ${source}`);
         return;
     }
-    await waitForPublication(notification.state, config.siteUrl, { log });
+    await waitForPublication(notification.state, config.siteUrl, { log, source: selected });
     const result = notification.payload ? await send(notification.payload, apiKey) : null;
     if (notification.payload && !result?.delivered) {
         throw new Error('OneSignal did not accept the notification; notification remains pending');

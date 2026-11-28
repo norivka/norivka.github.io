@@ -4,12 +4,12 @@ const { buildNotification } = require('./notification-core');
 const config = require('../push-config.json');
 const empty = { days: [], addressNotificationVersion: 1, revision: 'initial' };
 
-test('Yasno ignores tomorrow emergency and planned schedule changes', () => {
+test('Yasno sends new planned outages regardless of tomorrow’s emergency status', () => {
     const change = buildNotification('yasno', empty, {
         days: [{ date: '2026-11-05', outages: [{ start: 60, end: 120 }] }],
         today: { status: 'ScheduleApplies' }, tomorrow: { status: 'EmergencyShutdowns' }
-    }, config);
-    assert.equal(change.payload, null);
+    }, config, null, new Date('2026-11-05T12:00:00Z'));
+    assert.equal(change.payload.contents.uk, 'нові графіки відключень');
 });
 
 test('both emergency DTEK notice types send cancellation once', () => {
@@ -25,14 +25,9 @@ test('both emergency DTEK notice types send cancellation once', () => {
     }
 });
 
-test('Yasno silently acknowledges emergency start, cancellation, and reappearance', () => {
-    let state = empty;
+test('Yasno emergency status alone does not trigger a push', () => {
     for (const status of ['EmergencyShutdowns', 'ScheduleApplies', 'EmergencyShutdowns']) {
         const data = { days: [], today: { status } };
-        const change = buildNotification('yasno', state, data, config);
-        assert.equal(change.payload, null);
-        assert.notEqual(change.state.revision, state.revision);
-        state = change.state;
-        assert.equal(buildNotification('yasno', state, data, config), null);
+        assert.equal(buildNotification('yasno', empty, data, config), null);
     }
 });

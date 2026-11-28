@@ -1,5 +1,6 @@
 const { setTimeout: delay } = require('node:timers/promises');
 const { buildNotification, sendNotification } = require('./notification-core');
+const { latestScheduleSource } = require('../../schedule-source');
 const { selectGroup } = require('./group-schedule');
 
 const FILES = { schedule: 'dtek-outages.json', address: 'dtek-address.json', yasno: 'outages.json', yasnoGroup: 'yasno-group.json' };
@@ -93,32 +94,32 @@ async function waitForPublication(data, siteUrl, {
 
 async function notifySources({ data, updated, states, config, apiKey, acknowledge,
     send = sendNotification, wait = waitForPublication, now = new Date() }) {
-    const errors = {};
     await wait(data, config.siteUrl);
-    for (const source of ['dtek', 'yasno']) {
-        const addressUpdated = updated.includes(source === 'dtek' ? 'address' : 'yasnoGroup');
-        if (!updated.includes(source === 'dtek' ? 'schedule' : 'yasno') && !addressUpdated) continue;
-        try {
-            if (!states[source]?.revision) throw new Error(`Missing migrated ${source} notification state`);
-            const schedule = data[source === 'dtek' ? FILES.schedule : FILES.yasno];
-            const address = source === 'dtek' ? data[FILES.address] : null;
-            if (!schedule || (source === 'dtek' && !address)) throw new Error('Source data incomplete');
-            const notification = buildNotification(source, states[source], schedule, config, address, now);
-            if (!notification) {
-                console.log(`No notification for ${source}: state unchanged`);
-                continue;
-            }
-            if (notification.payload) {
-                if (!apiKey) throw new Error('OneSignal secret is missing');
-                const result = await send(notification.payload, apiKey);
-                if (!result?.delivered) throw new Error('OneSignal did not accept notification');
-                console.log(`Push accepted for ${source}; id=${result.id}`);
-            }
-            // Persist after each source. Failed acceptance never advances its revision.
-            await acknowledge(source, notification.state);
-        } catch (error) { errors[source] = error instanceof Error ? error.message : 'Notification failed'; }
+    if (!updated.length) return {};
+    const dtek = data[FILES.schedule];
+    const yasno = data[FILES.yasno];
+    const source = latestScheduleSource(dtek, yasno);
+    try {
+        // The existing DTEK state records what subscribers have already been told.
+        const previous = states.dtek;
+        if (!previous?.revision) throw new Error('Missing migrated notification state');
+        const schedule = source === 'yasno' ? yasno : dtek;
+        const address = data[FILES.address] ?? previous.address;
+        if (!schedule && !data[FILES.address]) throw new Error('Source data incomplete');
+        const notification = buildNotification(source ?? 'dtek', previous, schedule ?? { group: null, days: [] },
+            config, address, now);
+        if (!notification) return {};
+        if (notification.payload) {
+            if (!apiKey) throw new Error('OneSignal secret is missing');
+            const result = await send(notification.payload, apiKey);
+            if (!result?.delivered) throw new Error('OneSignal did not accept notification');
+            console.log(`Push accepted; id=${result.id}`);
+        }
+        await acknowledge('dtek', notification.state);
+        return {};
+    } catch (error) {
+        return { [source ?? 'dtek']: error instanceof Error ? error.message : 'Notification failed' };
     }
-    return errors;
 }
 
 module.exports = { FILES, collectData, collectionFailed, reportSourceErrors, waitForPublication, notifySources };

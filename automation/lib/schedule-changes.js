@@ -9,17 +9,25 @@ function scheduleSnapshot(data) {
         if (!Number.isFinite(date.getTime()) || !Array.isArray(day.outages)) {
             throw new Error('Invalid schedule day');
         }
+        const intervals = day.outages.map(({ start, end }) => {
+            if (!Number.isInteger(start) || !Number.isInteger(end) ||
+                start < 0 || end > 1440 || start >= end) {
+                throw new Error('Invalid outage interval');
+            }
+            return { start, end };
+        }).sort((a, b) => a.start - b.start);
+        // Providers may split the same continuous outage into adjacent slots.
+        const outages = [];
+        for (const interval of intervals) {
+            const last = outages.at(-1);
+            if (last && interval.start <= last.end) last.end = Math.max(last.end, interval.end);
+            else outages.push(interval);
+        }
         return {
             date: new Intl.DateTimeFormat('en-CA', {
                 timeZone: 'Europe/Kyiv', year: 'numeric', month: '2-digit', day: '2-digit'
             }).format(date),
-            outages: day.outages.map(({ start, end }) => {
-                if (!Number.isInteger(start) || !Number.isInteger(end) ||
-                    start < 0 || end > 1440 || start >= end) {
-                    throw new Error('Invalid outage interval');
-                }
-                return { start, end };
-            }).sort((a, b) => a.start - b.start || a.end - b.end)
+            outages
         };
     }).sort((a, b) => a.date.localeCompare(b.date));
 }

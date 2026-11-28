@@ -32,17 +32,14 @@ function buildNotification(source, previousState, data, config, addressData = nu
     if (!Object.hasOwn(SOURCES, source)) throw new Error('Unknown schedule source');
     const previous = scheduleSnapshot(previousState);
     // An unresolved address group must not be interpreted as a schedule cancellation.
-    if (source === 'yasno' && data.group === null) return null;
     const next = data.group === null ? previous : scheduleSnapshot(data);
     const dates = changedScheduleDates(previous, next);
     const today = new Intl.DateTimeFormat('en-CA', {
         timeZone: 'Europe/Kyiv', year: 'numeric', month: '2-digit', day: '2-digit'
     }).format(now);
-    const scheduleKind = source === 'dtek' ? scheduleChangeKind(previous, next, today) : null;
+    const scheduleKind = scheduleChangeKind(previous, next, today);
     const beforeNotice = addressNotice(previousState.address);
-    const nextNotice = addressNotice(source === 'dtek' ? addressData :
-        data.today?.status === 'EmergencyShutdowns'
-            ? { sub_type: 'Екстрені відключення', start_date: '', end_date: '' } : null);
+    const nextNotice = addressNotice(addressData);
     const isRepair = /^аварійні ремонтні роботи$/iu.test(nextNotice.sub_type);
     // Older states silently acknowledged non-emergency notices. Deliver a current
     // notice once under the expanded policy, keeping failed sends pending.
@@ -61,32 +58,31 @@ function buildNotification(source, previousState, data, config, addressData = nu
     // A stable UUID deduplicates retries even after a failed acknowledgement commit.
     // Chaining the previous revision lets a later A → B change get its own message.
     // Include the audience so correcting a target does not reuse a failed send's key.
-    const bytes = createHash('sha256').update(JSON.stringify([source, previousState.revision, next, nextNotice, PUSH_SEGMENTS])).digest().subarray(0, 16);
+    const bytes = createHash('sha256').update(JSON.stringify(['dtek', previousState.revision, next, nextNotice, PUSH_SEGMENTS])).digest().subarray(0, 16);
     bytes[6] = (bytes[6] & 0x0f) | 0x40;
     bytes[8] = (bytes[8] & 0x3f) | 0x80;
     const hex = bytes.toString('hex');
     const id = `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
-    const title = noticeKind
+    const noticeTitle = noticeKind
         ? (emergencyRemoved
             ? (/екстрен/iu.test(beforeNotice.sub_type) ? 'Скасовано екстрені відключення' : 'Скасовано аварійні відключення')
             : isStabilizationNotice(nextNotice) ? 'відключення згідно графіку'
                 : nextNotice.sub_type || 'Повідомлення про відключення')
-        : {
-            published: 'нові графіки відключень',
-            changed: 'зміни у графіках відключень',
-            cancelled: 'скасовано графіки відключень'
-        }[scheduleKind];
-    const heading = SOURCES[source].name;
-    const message = title ?? '';
+        : '';
+    const scheduleTitle = {
+        published: 'нові графіки відключень',
+        changed: 'зміни у графіках відключень',
+        cancelled: 'скасовано графіки відключень'
+    }[scheduleKind];
+    const heading = SOURCES[noticeKind ? 'dtek' : source].name;
     const times = noticeKind ? addressNotificationBody(nextNotice) : '';
-    const body = [message, times].filter(Boolean).join('\n').toLocaleLowerCase('uk-UA');
+    const body = [noticeTitle, times, scheduleTitle].filter(Boolean).join('\n').toLocaleLowerCase('uk-UA');
     const url = new URL(config.siteUrl);
     if (url.protocol !== 'https:') throw new Error('Notification URL must use HTTPS');
-    url.searchParams.set('source', source);
     return {
         state: { days: next, address: nextNotice, addressNotificationVersion: 1, revision: id },
         // Acknowledge every change so reappearance can trigger a new notification.
-        payload: source === 'yasno' || (!scheduleKind && !noticeKind) ? null : {
+        payload: !scheduleKind && !noticeKind ? null : {
             app_id: config.appId,
             included_segments: PUSH_SEGMENTS,
             target_channel: 'push',

@@ -19,23 +19,28 @@ function element() {
     };
 }
 
-function createApp(fetch, dataBaseUrl = '') {
+function createApp(fetch, dataBaseUrl = '', search = '') {
     const content = element();
     const notice = element();
     const freshness = element();
+    const indicator = element();
+    const emergency = element();
     const context = vm.createContext({
-        URLSearchParams,
-        window: { location: { search: '' }, OUTAGE_DATA_BASE_URL: dataBaseUrl },
+        AbortSignal, URLSearchParams,
+        window: { location: { search }, OUTAGE_DATA_BASE_URL: dataBaseUrl },
         fetch, console: { error() {} }, setInterval() {}, clearInterval() {},
         document: {
             hidden: true,
-            getElementById: id => ({ content, 'dtek-notice': notice, 'data-freshness': freshness }[id]),
+            getElementById: id => ({ content, 'dtek-notice': notice, 'data-freshness': freshness,
+                'schedule-update': indicator, 'yasno-emergency': emergency }[id]),
             createElement: element,
             addEventListener() {}, querySelectorAll: () => []
         }
     });
-    vm.runInContext(fs.readFileSync(path.join(__dirname, 'app.js'), 'utf8'), context);
-    return { context, content, notice, freshness };
+    for (const script of ['schedule-source.js', 'app.js']) {
+        vm.runInContext(fs.readFileSync(path.join(__dirname, script), 'utf8'), context);
+    }
+    return { context, content, notice, freshness, indicator, emergency };
 }
 
 const response = data => ({ ok: true, json: async () => data });
@@ -90,20 +95,37 @@ test('upstream message markup is rendered as literal text', async () => {
     assert.equal(notice.innerHTML, '');
 });
 
-test('switching to Yasno hides address warnings and ignores a late DTEK response', async () => {
-    let finishAddress;
-    const { context, content, notice } = createApp(async url => {
-        if (url.startsWith('data/dtek-address.json')) {
-            return new Promise(resolve => { finishAddress = resolve; });
-        }
-        return response(schedule);
-    });
-    vm.runInContext("switchDataSource('yasno')", context);
+test('compares both timestamps on every refresh, including ties and legacy source links', async () => {
+    const dtek = { ...schedule, group: 'GPV2.1',
+        days: [{ isToday: true, date: '2026-11-01', outages: [{ start: 60, end: 120 }] }] };
+    const yasno = { ...schedule, group: '2.1',
+        days: [{ isToday: true, date: '2026-11-01', outages: [{ start: 300, end: 360 }] }] };
+    const { context, content, indicator, notice } = createApp(async url => response(
+        url.includes('dtek-address') ? warning : url.includes('dtek-outages') ? dtek : yasno
+    ), '', '?source=yasno');
     await settle();
-    finishAddress(response(warning));
-    await settle();
-    assert.equal(notice.hidden, true);
-    assert.match(content.innerHTML, /Інформація щодо графіків відсутня/);
+    assert.match(indicator.textContent, /Останнє оновлення: .* \(ДТЕК\)$/);
+    assert.match(content.innerHTML, /01:00 — 02:00/);
+    yasno.lastUpdate = '2026-11-01T08:00:01+02:00';
+    await vm.runInContext('loadSchedule()', context);
+    assert.match(indicator.textContent, /Останнє оновлення: .* \(ЯСНО\)$/);
+    assert.match(content.innerHTML, /05:00 — 06:00/);
+    assert.equal(notice.hidden, false);
+    dtek.lastUpdate = '2026-11-01T06:00:02Z';
+    await vm.runInContext('loadSchedule()', context);
+    assert.match(indicator.textContent, /Останнє оновлення: .* \(ДТЕК\)$/);
+});
+
+test('uses the available schedule if one source fails', async () => {
+    for (const [missingFile, expected] of [['dtek-outages.json', 'ЯСНО'], ['data/outages.json', 'ДТЕК']]) {
+        const { indicator, content } = createApp(async url => {
+            if (url.includes(missingFile)) throw new Error('offline');
+            return response(url.includes('dtek-address') ? warning : schedule);
+        });
+        await settle();
+        assert.ok(indicator.textContent.endsWith(`(${expected})`));
+        assert.doesNotMatch(content.innerHTML, /Помилка завантаження/);
+    }
 });
 
 test('address warning is positioned before all schedule content in the page', () => {
@@ -112,38 +134,29 @@ test('address warning is positioned before all schedule content in the page', ()
 });
 
 
-test('loads both DTEK endpoints from the configured Worker without falling back to old files', async () => {
+test('loads both schedules and the address from the configured data host', async () => {
     const urls = [];
-    const { context } = createApp(async url => {
-        urls.push(url);
+    createApp(async url => {
+        urls.push(url.split('?')[0]);
         return response(url.includes('dtek-address') ? warning : schedule);
     }, 'https://norivka-outages.example.workers.dev/');
     await settle();
-    assert.equal(urls.length, 2);
-    assert.ok(urls.every(url => url.startsWith('https://norivka-outages.example.workers.dev/data/')));
-    vm.runInContext("switchDataSource('yasno')", context);
-    await settle();
-    assert.ok(urls[2].startsWith('https://norivka-outages.example.workers.dev/data/outages.json?'));
+    const base = 'https://norivka-outages.example.workers.dev/data/';
+    assert.deepEqual(urls.sort(), ['dtek-address.json', 'dtek-outages.json', 'outages.json'].map(file => base + file));
 });
 
 for (const todayStatus of ['EmergencyShutdowns', 'ScheduleApplies', undefined]) {
-    test(`Yasno renders one notice only for today's emergency: ${todayStatus}`, async () => {
-        const data = { ...schedule, today: { status: todayStatus },
-            tomorrow: { status: 'EmergencyShutdowns' } };
-        const { context, notice } = createApp(async url => response(
-            url.includes('dtek-address') ? warning : data));
+    test(`selected Yasno schedule renders today's emergency: ${todayStatus}`, async () => {
+        const data = { ...schedule, lastUpdate: '2026-11-01T06:01:00Z',
+            today: { status: todayStatus }, tomorrow: { status: 'EmergencyShutdowns' } };
+        const { context, notice, emergency } = createApp(async url => response(
+            url.includes('dtek-address') ? warning : url.includes('dtek-outages') ? schedule : data));
         await settle();
-        vm.runInContext("switchDataSource('yasno')", context);
-        await settle();
-        assert.equal(notice.hidden, todayStatus !== 'EmergencyShutdowns');
-        if (todayStatus === 'EmergencyShutdowns') {
-            assert.equal(noticeText(notice).split('Екстрені відключення').length - 1, 1);
-            await vm.runInContext('loadSchedule()', context);
-            assert.equal(notice.hidden, false);
-            data.today.status = 'ScheduleApplies';
-            await vm.runInContext('loadSchedule()', context);
-            assert.equal(notice.hidden, true);
-        }
+        assert.equal(emergency.hidden, todayStatus !== 'EmergencyShutdowns');
+        assert.equal(notice.hidden, false);
+        data.lastUpdate = schedule.lastUpdate;
+        await vm.runInContext('loadSchedule()', context);
+        assert.equal(emergency.hidden, true);
     });
 }
 
@@ -157,14 +170,10 @@ test('staleness warns only for the active schedule at the 15-minute boundary wit
     vm.runInContext(`renderFreshness(Date.parse('${timestamp}') + 15 * 60000 + 1)`, context);
     assert.equal(freshness.textContent, 'Дані не оновлювалися понад 15 хвилин і можуть бути застарілими.');
     assert.doesNotMatch(noticeText(notice), /Дані не оновлювалися/);
-    vm.runInContext(`freshness.dtek.schedule.lastUpdate = '2026-11-05T00:15:00Z'; renderFreshness(Date.parse('${timestamp}') + 16 * 60000)`, context);
+    vm.runInContext(`savedSchedules.dtek.lastUpdate = '2026-11-05T00:15:00Z'; renderFreshness(Date.parse('${timestamp}') + 16 * 60000)`, context);
     assert.equal(freshness.hidden, true);
     assert.doesNotMatch(noticeText(notice), /Дані не оновлювалися/);
-    await vm.runInContext("switchDataSource('yasno')", context);
-    await settle();
-    vm.runInContext(`renderFreshness(Date.parse('${timestamp}') + 16 * 60000)`, context);
-    assert.doesNotMatch(freshness.textContent, /Адресна інформація/);
-    assert.equal(freshness.textContent, 'Дані не оновлювалися понад 15 хвилин і можуть бути застарілими.');
+
 });
 
 test('temporary download failures retain the last schedule and show its actual age', async () => {

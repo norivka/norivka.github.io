@@ -175,9 +175,9 @@ test('no push occurs before publication and failed sends keep their previous rev
     };
     const errors = await notifySources(options);
     assert.deepEqual(errors, { dtek: 'rejected' });
-    assert.deepEqual(accepted, ['yasno']);
+    assert.deepEqual(accepted, []);
     assert.equal(states.dtek.revision, 'initial');
-    assert.notEqual(states.yasno.revision, 'initial');
+    assert.equal(states.yasno.revision, 'initial');
     await assert.rejects(notifySources({ ...options, wait: async () => { throw new Error('not published'); },
         send: async () => assert.fail('must not send') }), /not published/);
 });
@@ -232,4 +232,32 @@ test('accepted push followed by failed state persistence retries with the same i
     assert.equal(keys[0], keys[1]);
     await notifySources(options);
     assert.equal(keys.length, 2);
+});
+
+test('publishes a new Yasno schedule once and deduplicates DTEK catching up, including after a failed acknowledgement', async () => {
+    const now = new Date('2026-11-05T12:00:00Z');
+    const yasno = { lastUpdate: now.toISOString(), group: '13.1',
+        days: [{ date: '2026-11-05T00:00:00+02:00', outages: [{ start: 60, end: 90 }, { start: 90, end: 120 }] }] };
+    const data = { 'dtek-outages.json': empty, 'outages.json': yasno };
+    const sent = [];
+    const states = { dtek: initial };
+    const options = { data, states, config, apiKey: 'test', updated: ['yasno'], now, wait: async () => {},
+        send: async payload => { sent.push(payload); return { delivered: true }; },
+        acknowledge: async () => { throw new Error('save failed'); },
+    };
+    assert.deepEqual(await notifySources(options), { yasno: 'save failed' });
+    assert.equal(sent[0].headings.uk, 'ЯСНО');
+    assert.equal(sent[0].contents.uk, 'нові графіки відключень');
+    data['dtek-outages.json'] = { lastUpdate: now.toISOString(),
+        days: [{ date: '2026-11-04T22:00:00Z', outages: [{ start: 60, end: 120 }] }] };
+    options.updated = ['schedule'];
+    options.acknowledge = async (key, value) => { states[key] = value; };
+    assert.deepEqual(await notifySources(options), {});
+    assert.equal(sent[1].idempotency_key, sent[0].idempotency_key);
+    yasno.lastUpdate = '2026-11-05T12:06:00Z';
+    assert.deepEqual(await notifySources(options), {});
+    assert.equal(sent.length, 2);
+    yasno.days[0].outages[1].end = 180;
+    assert.deepEqual(await notifySources(options), {});
+    assert.equal(sent[2].contents.uk, 'зміни у графіках відключень');
 });

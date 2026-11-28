@@ -67,7 +67,7 @@ test('builds web push with the correct source URL and subscriber audience', () =
     assert.deepEqual(notification.payload.included_segments, ['Total Subscriptions']);
     assert.equal(notification.payload.isAnyWeb, true);
     assert.equal(notification.payload.ttl, 3600);
-    assert.equal(notification.payload.url, 'https://norivka.github.io/?source=dtek');
+    assert.equal(notification.payload.url, config.siteUrl);
     assert.equal(notification.payload.contents.uk, 'нові графіки відключень');
     assert.deepEqual(notification.payload.headings, { en: 'ДТЕК', uk: 'ДТЕК' });
     assert.equal(notification.state.revision, notification.payload.idempotency_key);
@@ -259,7 +259,7 @@ test('notice type changes trigger one push even when the times stay the same', (
 test('a notice plus schedule change produces one push', () => {
     const combined = buildNotification('dtek', empty, schedule, config, repair);
     assert.ok(combined.payload);
-    assert.deepEqual(combined.payload.contents, { en: 'аварійні ремонтні роботи\n31.10 23:16 - 01.11 10:50', uk: 'аварійні ремонтні роботи\n31.10 23:16 - 01.11 10:50' });
+    assert.deepEqual(combined.payload.contents, { en: 'аварійні ремонтні роботи\n31.10 23:16 - 01.11 10:50\nнові графіки відключень', uk: 'аварійні ремонтні роботи\n31.10 23:16 - 01.11 10:50\nнові графіки відключень' });
     assert.equal(combined.state.days.length, 1);
     assert.deepEqual(combined.state.address, repair);
 });
@@ -284,11 +284,20 @@ test('rejects invalid source, config, payload, and notification state', () => {
     assert.throws(() => buildNotification('dtek', empty, { days: [] }, config, { sub_type: null }));
 });
 
-test('Yasno is ignored before reading data or sending anything', async () => {
-    await assert.rejects(notifyScheduleChanges('yasno', {
-        root: '/does-not-exist', apiKey: 'test-key',
-        send: async () => assert.fail('Yasno must never send push')
-    }), /Only DTEK/);
+test('the local notifier also checks the selected Yasno publication and uses the shared baseline', async t => {
+    const options = fixture(t);
+    fs.writeFileSync(`${options.root}/data/outages.json`, JSON.stringify({ ...schedule, lastUpdate: now.toISOString() }));
+    let sends = 0;
+    options.apiKey = 'test-key';
+    options.waitForPublication = async (_state, _url, { source }) => assert.equal(source, 'yasno');
+    options.send = async payload => {
+        assert.equal(payload.headings.uk, 'ЯСНО');
+        sends++;
+        return { delivered: true };
+    };
+    await notifyScheduleChanges('yasno', options);
+    await notifyScheduleChanges('dtek', options);
+    assert.equal(sends, 1);
 });
 
 test('retries network, 429, and server errors with the same request body', async () => {

@@ -45,13 +45,6 @@
             font-size: 14px;
         }
 
-        .source-switcher {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-            justify-content: center;
-        }
-
         .source-btn {
             padding: 8px 20px;
             border: 2px solid #667eea;
@@ -67,11 +60,6 @@
         .source-btn:hover {
             transform: translateY(-1px);
             box-shadow: 0 4px 8px rgba(102, 126, 234, 0.2);
-        }
-
-        .source-btn.active {
-            background: #667eea;
-            color: white;
         }
 
         button:focus-visible {
@@ -117,15 +105,6 @@
         .notification-panel p:empty {
             display: none;
         }
-
-        .data-source {
-            text-align: center;
-            color: #999;
-            font-size: 12px;
-            margin-top: 10px;
-        }
-
-
 
         .schedule {
             margin-top: 20px;
@@ -234,14 +213,11 @@
         <h1>⚡ Графік відключень електроенергії</h1>
         <p class="subtitle">Моніторинг відключень для с. Любимівка, вул. Центральна</p>
         
-        <div class="source-switcher">
-            <button class="source-btn active" data-source="dtek" onclick="switchDataSource('dtek')">ДТЕК</button>
-            <button class="source-btn" data-source="yasno" onclick="switchDataSource('yasno')">ЯСНО</button>
-        </div>
-        
         <div id="data-freshness" class="status warning" role="status" hidden></div>
         <div id="dtek-notice" class="address-notice" role="alert" hidden></div>
+        <div id="yasno-emergency" class="address-notice" role="alert" hidden>⚠️ Екстрені відключення</div>
         <div id="content" class="loading">Завантаження...</div>
+        <div id="schedule-update" class="last-update" hidden></div>
     </div>
 
     <div class="notification-panel">
@@ -250,7 +226,8 @@
     </div>
 
     <script src="data-config.js?v=2"></script>
-    <script src="app.js?v=4"></script>
+    <script src="schedule-source.js"></script>
+    <script src="app.js?v=5"></script>
     <script src="push-notifications.js?v=2"></script>
     <!-- Cloudflare Web Analytics -->
     <script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "7e69900542f64a498ddfa5a7e26e44d5"}'></script>

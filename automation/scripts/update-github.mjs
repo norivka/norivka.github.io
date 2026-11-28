@@ -68,7 +68,7 @@ if (phase === 'fetch') {
     let notificationErrors = {};
     if (phase === 'verify') await waitForPublication(data, config.siteUrl);
     else {
-        const states = Object.fromEntries(['dtek', 'yasno'].map(source => [source, read(join(state, 'notifications', `${source}.json`))]));
+        const states = { dtek: read(join(state, 'notifications', 'dtek.json')) };
         notificationErrors = await notifySources({ data, updated: run.updated, states, config,
             apiKey: process.env.ONESIGNAL_REST_API_KEY,
             acknowledge: async (source, next) => {

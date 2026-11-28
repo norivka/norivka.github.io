@@ -6,28 +6,20 @@ const DATA_URLS = {
 };
 const DTEK_ADDRESS_URL = 'data/dtek-address.json';
 
-const requestedSource = new URLSearchParams(window.location.search).get('source');
-let currentDataSource = Object.hasOwn(DATA_URLS, requestedSource) ? requestedSource : 'dtek';
-let currentData = null;
+let currentDataSource = 'dtek';
 const savedSchedules = {};
-const freshness = { dtek: {}, yasno: {} };
+let refreshInProgress;
 const STALE_AFTER_MS = 15 * 60 * 1000;
 
 function renderFreshness(now = Date.now()) {
     const banner = document.getElementById('data-freshness');
-    const keys = ['schedule'];
-    if (currentDataSource === 'dtek' && freshness.dtek.address) {
-        renderDtekNotice(freshness.dtek.address);
+    const schedule = savedSchedules[currentDataSource];
+    const messages = [];
+    if (schedule) {
+        const timestamp = Date.parse(schedule.lastUpdate);
+        if (!Number.isFinite(timestamp)) messages.push('Час останнього оновлення невідомий.');
+        else if (now - timestamp > STALE_AFTER_MS) messages.push('Дані не оновлювалися понад 15 хвилин і можуть бути застарілими.');
     }
-    const messages = keys.flatMap(key => {
-        const value = freshness[currentDataSource][key];
-        if (!value) return [];
-        const timestamp = Date.parse(value.lastUpdate);
-        if (!Number.isFinite(timestamp)) return ['Час останнього оновлення невідомий.'];
-        if (now - timestamp > STALE_AFTER_MS) return ['Дані не оновлювалися понад 15 хвилин і можуть бути застарілими.'];
-        return [];
-    });
-    const schedule = freshness[currentDataSource].schedule;
     if (schedule?.group && now - Date.parse(schedule.groupCheckedAt) > STALE_AFTER_MS) {
         messages.push('Чергу для цієї адреси востаннє перевірено понад 15 хвилин тому.');
     }
@@ -111,12 +103,6 @@ function renderSchedule(data) {
         });
     }
 
-    // Always show last update time if available
-    if (data && data.lastUpdate) {
-        const updateTime = new Date(data.lastUpdate).toLocaleString('uk-UA');
-        html += `<div class="last-update">Останнє оновлення: ${updateTime}</div>`;
-    }
-
     content.innerHTML = html;
 }
 
@@ -146,7 +132,7 @@ function renderDtekNotice(data) {
         notice.append(line);
     }
 
-    if (hasNotice) addLine(`⚠️ ${data.sub_type || 'Відключення електроенергії'}`, 'address-notice-title');
+    addLine(`⚠️ ${data.sub_type || 'Відключення електроенергії'}`, 'address-notice-title');
     const isEmergency = /аварійн|екстрен/iu.test(data.sub_type || '');
     if (data.start_date) addLine(`Початок: ${formatAddressDate(data.start_date, isEmergency)}`);
     if (data.end_date) addLine(`Завершення: ${isEmergency ? 'орієнтовно ' : ''}${formatAddressDate(data.end_date, isEmergency)}`);
@@ -157,14 +143,15 @@ function renderDtekNotice(data) {
     }
 }
 
-async function loadDtekNotice(source) {
-    if (source !== 'dtek') return;
+async function fetchData(path) {
+    const response = await fetch(dataUrl(path) + '?t=' + Date.now(), { signal: AbortSignal.timeout(15000) });
+    if (!response.ok) throw new Error('Failed to load ' + path);
+    return response.json();
+}
+
+async function loadDtekNotice() {
     try {
-        const response = await fetch(dataUrl(DTEK_ADDRESS_URL) + '?t=' + Date.now());
-        if (!response.ok) throw new Error('Failed to load DTEK address information');
-        const data = await response.json();
-        freshness.dtek.address = data;
-        if (source === currentDataSource) renderDtekNotice(data);
+        renderDtekNotice(await fetchData(DTEK_ADDRESS_URL));
     } catch (error) {
         console.error('Error loading DTEK address information:', error);
     }
@@ -172,71 +159,47 @@ async function loadDtekNotice(source) {
 
 async function loadScheduleData(source) {
     try {
-        const response = await fetch(dataUrl(DATA_URLS[source]) + '?t=' + Date.now());
-        if (!response.ok) {
-            throw new Error('Failed to load data');
-        }
-        
-        const data = await response.json();
+        const data = await fetchData(DATA_URLS[source]);
+        if (!Array.isArray(data?.days)) throw new Error('Invalid schedule');
         savedSchedules[source] = data;
-        freshness[source].schedule = data;
-        if (source !== currentDataSource) return;
-        currentData = data;
-        renderSchedule(data);
-        if (source === 'yasno') {
-            renderDtekNotice(data.today?.status === 'EmergencyShutdowns'
-                ? { sub_type: 'Екстрені відключення', lastUpdate: data.lastUpdate } : null);
-        }
-        updateDataSourceIndicator(source);
-        
     } catch (error) {
-        console.error('Error loading schedule:', error);
-        if (source !== currentDataSource) return;
-        if (savedSchedules[source]) {
-            currentData = savedSchedules[source];
-            renderSchedule(currentData);
-        } else {
-            document.getElementById('content').innerHTML =
-                '<div class="error">Помилка завантаження даних. Спробуйте пізніше.</div>';
-        }
+        console.error('Error loading schedule:', source, error);
     }
 }
 
-async function loadSchedule(source = currentDataSource) {
-    await Promise.allSettled([loadScheduleData(source), loadDtekNotice(source)]);
+async function loadLatestSchedule() {
+    await Promise.all([loadScheduleData('dtek'), loadScheduleData('yasno')]);
+    const { dtek, yasno } = savedSchedules;
+    currentDataSource = latestScheduleSource(dtek, yasno);
+    if (!currentDataSource) {
+        document.getElementById('content').innerHTML =
+            '<div class="error">Помилка завантаження даних. Спробуйте пізніше.</div>';
+        return;
+    }
+
+    const schedule = savedSchedules[currentDataSource];
+    renderSchedule(schedule);
     renderFreshness();
+
+    const name = currentDataSource === 'dtek' ? 'ДТЕК' : 'ЯСНО';
+    const updatedAt = Date.parse(schedule.lastUpdate);
+    const footer = document.getElementById('schedule-update');
+    footer.textContent = Number.isFinite(updatedAt)
+        ? `Останнє оновлення: ${new Date(updatedAt).toLocaleString('uk-UA', { timeZone: 'Europe/Kyiv' })} (${name})`
+        : `Час оновлення невідомий (${name})`;
+    footer.hidden = false;
+    document.getElementById('yasno-emergency').hidden =
+        currentDataSource !== 'yasno' || schedule.today?.status !== 'EmergencyShutdowns';
 }
 
-function updateDataSourceIndicator(source) {
-    const indicator = document.getElementById('data-source-indicator');
-    if (indicator) {
-        const sourceNames = {
-            yasno: 'ЯСНО',
-            dtek: 'ДТЕК'
-        };
-        const group = savedSchedules[source]?.group;
-        indicator.textContent = `Джерело: ${sourceNames[source]}` + (group ? ` · Черга ${group.replace(/^GPV/, '')}` : '');
+function loadSchedule() {
+    if (!refreshInProgress) {
+        refreshInProgress = Promise.all([loadLatestSchedule(), loadDtekNotice()])
+            .finally(() => { refreshInProgress = null; });
     }
+    return refreshInProgress;
 }
 
-function switchDataSource(source) {
-    if (source !== currentDataSource && DATA_URLS[source]) {
-        currentDataSource = source;
-        renderDtekNotice(null);
-        renderFreshness();
-        loadSchedule(source);
-        
-        // Update button states
-        document.querySelectorAll('.source-switcher button').forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.source === source);
-        });
-    }
-}
-
-// Initialize
-document.querySelectorAll('.source-switcher button').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.source === currentDataSource);
-});
 loadSchedule();
 
 // Poll for updates when app is visible
