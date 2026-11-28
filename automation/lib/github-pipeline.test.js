@@ -7,7 +7,7 @@ const { processData } = require('./process-dtek-data');
 const config = require('../push-config.json');
 const empty = { days: [], lastUpdate: '2026-11-05T00:00:00Z' };
 const address = { sub_type: '', start_date: '', end_date: '', lastUpdate: empty.lastUpdate };
-const initial = { days: [], address, revision: 'initial', addressNotificationVersion: 1 };
+const initial = { groups: {}, days: [], address, revision: 'initial', addressNotificationVersion: 1 };
 
 test('each provider follows its own address lookup when only assignments change', async () => {
     const now = new Date('2026-11-05T09:00:00Z');
@@ -38,9 +38,10 @@ test('each provider follows its own address lookup when only assignments change'
         assert.equal(missing.data[file].group, null);
         assert.deepEqual(missing.data[file].schedules, schedules);
     }
-    const states = Object.fromEntries(['dtek', 'yasno'].map(source => [source, {
-        ...initial, days: second.data['dtek-outages.json'].days,
-    }]));
+    const states = { dtek: { ...initial, groups: {} } };
+    for (const [group, start] of [['13.1', 180], ['1.1', 0]]) {
+        states.dtek.groups[group] = [{ date: '2026-11-05', outages: [{ start, end: start + 60 }] }];
+    }
     const errors = await notifySources({ ...missing, states, config, now, wait: async () => {},
         send: async () => assert.fail('Unresolved group must not send cancellation'),
         acknowledge: async () => assert.fail('Unresolved group must not erase known schedule'),
@@ -247,8 +248,8 @@ test('publishes a new Yasno schedule once and deduplicates DTEK catching up, inc
     };
     assert.deepEqual(await notifySources(options), { yasno: 'save failed' });
     assert.equal(sent[0].headings.uk, 'ЯСНО');
-    assert.equal(sent[0].contents.uk, 'нові графіки відключень');
-    data['dtek-outages.json'] = { lastUpdate: now.toISOString(),
+    assert.equal(sent[0].contents.uk, 'група 13.1: нові графіки відключень');
+    data['dtek-outages.json'] = { group: 'GPV13.1', lastUpdate: now.toISOString(),
         days: [{ date: '2026-11-04T22:00:00Z', outages: [{ start: 60, end: 120 }] }] };
     options.updated = ['schedule'];
     options.acknowledge = async (key, value) => { states[key] = value; };
@@ -259,5 +260,43 @@ test('publishes a new Yasno schedule once and deduplicates DTEK catching up, inc
     assert.equal(sent.length, 2);
     yasno.days[0].outages[1].end = 180;
     assert.deepEqual(await notifySources(options), {});
-    assert.equal(sent[2].contents.uk, 'зміни у графіках відключень');
+    assert.equal(sent[2].contents.uk, 'група 13.1: зміни у графіках відключень');
+});
+
+test('two-group migration, changes in either group, simultaneous changes and missing groups', async () => {
+    const timestamp = '2026-11-05T00:00:00+02:00';
+    const group = end => ({ today: { date: timestamp, status: 'ScheduleApplies',
+        slots: [{ type: 'Definite', start: 0, end }] } });
+    const schedules = { '13.1': group(60), '1.1': group(120), '2.1': group(30) };
+    const data = { 'outages.json': { ...empty, schedules }, 'dtek-address.json': address };
+    const states = { dtek: { revision: 'previous-single-group', days: [], address } };
+    const messages = [];
+    const run = () => notifySources({ data, states, updated: ['yasno'], config, apiKey: 'test',
+        now: new Date(timestamp), wait: async () => {},
+        send: async payload => { messages.push(payload.contents.uk); return { delivered: true, id: 'test' }; },
+        acknowledge: async (key, value) => { states[key] = value; },
+    });
+    assert.deepEqual(await run(), {});
+    assert.deepEqual(Object.keys(states.dtek.groups), ['13.1', '1.1']);
+    assert.deepEqual(messages, []);
+    schedules['1.1'] = group(180);
+    await run();
+    schedules['13.1'] = group(90);
+    await run();
+    schedules['1.1'] = group(240);
+    schedules['13.1'].today.slots = [];
+    await run();
+    assert.deepEqual(messages, [
+        'група 1.1: зміни у графіках відключень',
+        'група 13.1: зміни у графіках відключень',
+        'група 13.1: скасовано графіки відключень\nгрупа 1.1: зміни у графіках відключень',
+    ]);
+    const revision = states.dtek.revision;
+    delete schedules['1.1'];
+    schedules['2.1'] = group(480);
+    await run();
+    schedules['1.1'] = group(240);
+    await run();
+    assert.equal(states.dtek.revision, revision);
+    assert.equal(messages.length, 3);
 });

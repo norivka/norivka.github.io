@@ -10,7 +10,7 @@ const buildNotification = (source, state, data, config, address = null) =>
     buildAtTime(source, state, data, config, address, now);
 
 const config = { appId: 'e90f40ee-b1b8-4d93-93a4-a7eab7e46681', siteUrl: 'https://norivka.github.io/' };
-const empty = { days: [], revision: 'initial' };
+const empty = { days: [], groups: {}, revision: 'initial' };
 const schedule = {
     lastUpdate: '2026-11-01T10:00:00Z',
     days: [{ date: '2026-11-01T00:00:00+02:00', isToday: true, outages: [{ start: 60, end: 120 }] }]
@@ -286,7 +286,7 @@ test('rejects invalid source, config, payload, and notification state', () => {
 
 test('the local notifier also checks the selected Yasno publication and uses the shared baseline', async t => {
     const options = fixture(t);
-    fs.writeFileSync(`${options.root}/data/outages.json`, JSON.stringify({ ...schedule, lastUpdate: now.toISOString() }));
+    fs.writeFileSync(`${options.root}/data/outages.json`, JSON.stringify({ ...schedule, group: '13.1', lastUpdate: now.toISOString() }));
     let sends = 0;
     options.apiKey = 'test-key';
     options.waitForPublication = async (_state, _url, { source }) => assert.equal(source, 'yasno');
@@ -351,7 +351,7 @@ function fixture(t) {
     fs.mkdirSync(`${root}/.github/notification-state`, { recursive: true });
     fs.mkdirSync(`${root}/data`);
     fs.writeFileSync(`${root}/push-config.json`, JSON.stringify(config));
-    fs.writeFileSync(`${root}/data/dtek-outages.json`, JSON.stringify(schedule));
+    fs.writeFileSync(`${root}/data/dtek-outages.json`, JSON.stringify({ ...schedule, group: 'GPV13.1' }));
     fs.writeFileSync(`${root}/data/dtek-address.json`, JSON.stringify({ sub_type: '', start_date: '', end_date: '' }));
     const statePath = `${root}/.github/notification-state/dtek.json`;
     fs.writeFileSync(statePath, JSON.stringify(empty));
@@ -422,7 +422,7 @@ test('waits for publication before sending and acknowledging an update', async t
         waitForPublication: async (expected, siteUrl) => {
             events.push('published');
             assert.equal(siteUrl, config.siteUrl);
-            assert.equal(expected.days[0].outages[0].end, 120);
+            assert.equal(expected.groups['13.1'][0].outages[0].end, 120);
             assert.deepEqual(JSON.parse(fs.readFileSync(options.statePath)), empty);
         },
         send: async () => {

@@ -1,5 +1,5 @@
 const { setTimeout: delay } = require('node:timers/promises');
-const { buildNotification, sendNotification } = require('./notification-core');
+const { buildDisplayedNotification, sendNotification } = require('./notification-core');
 const { latestScheduleSource } = require('../../schedule-source');
 const { selectGroup } = require('./group-schedule');
 
@@ -103,11 +103,9 @@ async function notifySources({ data, updated, states, config, apiKey, acknowledg
         // The existing DTEK state records what subscribers have already been told.
         const previous = states.dtek;
         if (!previous?.revision) throw new Error('Missing migrated notification state');
-        const schedule = source === 'yasno' ? yasno : dtek;
         const address = data[FILES.address] ?? previous.address;
-        if (!schedule && !data[FILES.address]) throw new Error('Source data incomplete');
-        const notification = buildNotification(source ?? 'dtek', previous, schedule ?? { group: null, days: [] },
-            config, address, now);
+        if (!source && !data[FILES.address]) throw new Error('Source data incomplete');
+        const notification = buildDisplayedNotification(previous, dtek, yasno, config, address, now);
         if (!notification) return {};
         if (notification.payload) {
             if (!apiKey) throw new Error('OneSignal secret is missing');

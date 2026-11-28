@@ -9,7 +9,7 @@ const warning = {
     start_date: '23:16 31.10.2026', end_date: '10:50 01.11.2026',
     lastUpdate: '2026-11-01T06:40:00Z', sourceUpdate: '08:31 01.11.2026'
 };
-const schedule = { days: [], lastUpdate: '2026-11-01T06:00:00Z' };
+const schedule = { group: '13.1', days: [], lastUpdate: '2026-11-01T06:00:00Z' };
 
 function element() {
     return {
@@ -24,6 +24,8 @@ function createApp(fetch, dataBaseUrl = '', search = '') {
     const notice = element();
     const freshness = element();
     const indicator = element();
+    const oldContent = element();
+    const oldIndicator = element();
     const emergency = element();
     const context = vm.createContext({
         AbortSignal, URLSearchParams,
@@ -32,7 +34,7 @@ function createApp(fetch, dataBaseUrl = '', search = '') {
         document: {
             hidden: true,
             getElementById: id => ({ content, 'dtek-notice': notice, 'data-freshness': freshness,
-                'schedule-update': indicator, 'yasno-emergency': emergency }[id]),
+                'schedule-update': indicator, 'old-content': oldContent, 'old-schedule-update': oldIndicator, 'yasno-emergency': emergency }[id]),
             createElement: element,
             addEventListener() {}, querySelectorAll: () => []
         }
@@ -40,7 +42,7 @@ function createApp(fetch, dataBaseUrl = '', search = '') {
     for (const script of ['schedule-source.js', 'app.js']) {
         vm.runInContext(fs.readFileSync(path.join(__dirname, script), 'utf8'), context);
     }
-    return { context, content, notice, freshness, indicator, emergency };
+    return { context, content, oldContent, notice, freshness, indicator, oldIndicator, emergency };
 }
 
 const response = data => ({ ok: true, json: async () => data });
@@ -56,10 +58,13 @@ test('schedule download failure still displays the independent address warning',
     assert.match(content.innerHTML, /Помилка завантаження/);
     assert.equal(notice.hidden, false);
     const text = noticeText(notice);
-    assert.equal(notice.children[0].textContent, `⚠️ ${warning.sub_type}`);
+    assert.equal(notice.children[0].textContent, '⚠️ Повідомлення від ДТЕК');
+    assert.equal(notice.children[0].className, 'address-notice-title');
+    assert.equal(notice.children[1].textContent, warning.sub_type);
+    assert.equal(notice.children[1].className, 'address-notice-type');
     assert.equal(text.split(warning.sub_type).length - 1, 1);
-    assert.equal(notice.children[1].textContent, 'Початок: 31.10 23:16');
-    assert.equal(notice.children[2].textContent, 'Завершення: орієнтовно 01.11 10:50');
+    assert.equal(notice.children[2].textContent, 'Початок: 31.10 23:16');
+    assert.equal(notice.children[3].textContent, 'Завершення: орієнтовно 01.11 10:50');
     assert.match(text, /Інформацію оновлено:.*08:31/);
 });
 
@@ -91,14 +96,14 @@ test('upstream message markup is rendered as literal text', async () => {
         url.startsWith('data/dtek-address.json') ? { ...warning, sub_type } : schedule
     ));
     await settle();
-    assert.equal(notice.children[0].textContent, `⚠️ ${sub_type}`);
+    assert.equal(notice.children[1].textContent, sub_type);
     assert.equal(notice.innerHTML, '');
 });
 
 test('compares both timestamps on every refresh, including ties and legacy source links', async () => {
-    const dtek = { ...schedule, group: 'GPV2.1',
+    const dtek = { ...schedule, group: 'GPV13.1',
         days: [{ isToday: true, date: '2026-11-01', outages: [{ start: 60, end: 120 }] }] };
-    const yasno = { ...schedule, group: '2.1',
+    const yasno = { ...schedule, group: '13.1',
         days: [{ isToday: true, date: '2026-11-01', outages: [{ start: 300, end: 360 }] }] };
     const { context, content, indicator, notice } = createApp(async url => response(
         url.includes('dtek-address') ? warning : url.includes('dtek-outages') ? dtek : yasno
@@ -120,7 +125,7 @@ test('uses the available schedule if one source fails', async () => {
     for (const [missingFile, expected] of [['dtek-outages.json', 'ЯСНО'], ['data/outages.json', 'ДТЕК']]) {
         const { indicator, content } = createApp(async url => {
             if (url.includes(missingFile)) throw new Error('offline');
-            return response(url.includes('dtek-address') ? warning : schedule);
+            return response(url.includes('dtek-address') ? warning : { ...schedule, group: url.includes('dtek-outages') ? 'GPV13.1' : '13.1' });
         });
         await settle();
         assert.ok(indicator.textContent.endsWith(`(${expected})`));
@@ -150,7 +155,7 @@ for (const todayStatus of ['EmergencyShutdowns', 'ScheduleApplies', undefined]) 
         const data = { ...schedule, lastUpdate: '2026-11-01T06:01:00Z',
             today: { status: todayStatus }, tomorrow: { status: 'EmergencyShutdowns' } };
         const { context, notice, emergency } = createApp(async url => response(
-            url.includes('dtek-address') ? warning : url.includes('dtek-outages') ? schedule : data));
+            url.includes('dtek-address') ? warning : url.includes('dtek-outages') ? { ...schedule, group: 'GPV13.1' } : data));
         await settle();
         assert.equal(emergency.hidden, todayStatus !== 'EmergencyShutdowns');
         assert.equal(notice.hidden, false);
@@ -170,7 +175,7 @@ test('staleness warns only for the active schedule at the 15-minute boundary wit
     vm.runInContext(`renderFreshness(Date.parse('${timestamp}') + 15 * 60000 + 1)`, context);
     assert.equal(freshness.textContent, 'Дані не оновлювалися понад 15 хвилин і можуть бути застарілими.');
     assert.doesNotMatch(noticeText(notice), /Дані не оновлювалися/);
-    vm.runInContext(`savedSchedules.dtek.lastUpdate = '2026-11-05T00:15:00Z'; renderFreshness(Date.parse('${timestamp}') + 16 * 60000)`, context);
+    vm.runInContext(`savedSchedules.yasno.lastUpdate = '2026-11-05T00:15:00Z'; renderFreshness(Date.parse('${timestamp}') + 16 * 60000)`, context);
     assert.equal(freshness.hidden, true);
     assert.doesNotMatch(noticeText(notice), /Дані не оновлювалися/);
 
@@ -193,14 +198,24 @@ test('temporary download failures retain the last schedule and show its actual a
     assert.match(freshness.textContent, /понад 15 хвилин/);
 });
 
-test('a fresh schedule warns when the address assignment is stale, and an unresolved group hides intervals', async () => {
-    const now = '2026-11-05T00:16:00Z';
-    const data = { ...schedule, group: 'GPV13.1', groupCheckedAt: '2026-11-05T00:00:00Z', lastUpdate: now };
-    const { context, content, freshness } = createApp(async url => response(url.includes('dtek-address') ? warning : data));
+test('shows both fixed groups in order, choosing the newest available provider separately', async () => {
+    const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
+    assert.match(html, /<h2[^>]*>Нові графіки, група 13\.1<\/h2>[\s\S]*?<h2[^>]*>Старі графіки, група 1\.1<\/h2>/);
+    const dtek = { lastUpdate: '2026-11-01T08:00:00Z', days: [], group: null,
+        schedules: { 1793484000: { 'GPV1.1': { 2: 'no' } } } };
+    const entry = start => ({ today: { status: 'ScheduleApplies', date: '2026-11-01',
+        slots: [{ type: 'Definite', start, end: start + 60 }] } });
+    const yasno = { ...schedule, group: null, schedules: { '13.1': entry(180), '1.1': entry(300) } };
+    const { context, content, oldContent, indicator, oldIndicator } = createApp(async url =>
+        response(url.includes('dtek-address') ? warning : url.includes('dtek-outages') ? dtek : yasno));
     await settle();
-    vm.runInContext(`renderFreshness(Date.parse('${now}'))`, context);
-    assert.match(freshness.textContent, /Чергу для цієї адреси/);
-    data.group = null;
+    assert.match(content.innerHTML, /03:00 — 04:00/);
+    assert.match(oldContent.innerHTML, /01:00 — 02:00/);
+    assert.match(indicator.textContent, /ЯСНО/);
+    assert.match(oldIndicator.textContent, /ДТЕК/);
+    delete yasno.schedules['13.1'];
     await vm.runInContext('loadSchedule()', context);
-    assert.match(content.innerHTML, /Не вдалося визначити графік/);
+    assert.match(content.innerHTML, /Інформація щодо графіків відсутня/);
+    assert.equal(indicator.hidden, true);
+    assert.match(oldContent.innerHTML, /01:00 — 02:00/);
 });

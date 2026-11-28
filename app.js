@@ -6,24 +6,20 @@ const DATA_URLS = {
 };
 const DTEK_ADDRESS_URL = 'data/dtek-address.json';
 
-let currentDataSource = 'dtek';
+let displayedSources = [];
 const savedSchedules = {};
 let refreshInProgress;
 const STALE_AFTER_MS = 15 * 60 * 1000;
 
 function renderFreshness(now = Date.now()) {
     const banner = document.getElementById('data-freshness');
-    const schedule = savedSchedules[currentDataSource];
     const messages = [];
-    if (schedule) {
-        const timestamp = Date.parse(schedule.lastUpdate);
+    for (const source of displayedSources) {
+        const timestamp = Date.parse(savedSchedules[source].lastUpdate);
         if (!Number.isFinite(timestamp)) messages.push('Час останнього оновлення невідомий.');
         else if (now - timestamp > STALE_AFTER_MS) messages.push('Дані не оновлювалися понад 15 хвилин і можуть бути застарілими.');
     }
-    if (schedule?.group && now - Date.parse(schedule.groupCheckedAt) > STALE_AFTER_MS) {
-        messages.push('Чергу для цієї адреси востаннє перевірено понад 15 хвилин тому.');
-    }
-    banner.textContent = messages.join(' ');
+    banner.textContent = [...new Set(messages)].join(' ');
     banner.hidden = messages.length === 0;
 }
 const FOREGROUND_CHECK_INTERVAL = 5 * 60 * 1000; // Check every 5 minutes when app is visible
@@ -54,8 +50,7 @@ function getCurrentTime() {
     return minutes;
 }
 
-function renderSchedule(data) {
-    const content = document.getElementById('content');
+function renderSchedule(content, data) {
     
     const currentMinutes = getCurrentTime();
     let html = '';
@@ -132,7 +127,8 @@ function renderDtekNotice(data) {
         notice.append(line);
     }
 
-    addLine(`⚠️ ${data.sub_type || 'Відключення електроенергії'}`, 'address-notice-title');
+    addLine('⚠️ Повідомлення від ДТЕК', 'address-notice-title');
+    addLine(data.sub_type || 'Відключення електроенергії', 'address-notice-type');
     const isEmergency = /аварійн|екстрен/iu.test(data.sub_type || '');
     if (data.start_date) addLine(`Початок: ${formatAddressDate(data.start_date, isEmergency)}`);
     if (data.end_date) addLine(`Завершення: ${isEmergency ? 'орієнтовно ' : ''}${formatAddressDate(data.end_date, isEmergency)}`);
@@ -170,26 +166,32 @@ async function loadScheduleData(source) {
 async function loadLatestSchedule() {
     await Promise.all([loadScheduleData('dtek'), loadScheduleData('yasno')]);
     const { dtek, yasno } = savedSchedules;
-    currentDataSource = latestScheduleSource(dtek, yasno);
-    if (!currentDataSource) {
-        document.getElementById('content').innerHTML =
-            '<div class="error">Помилка завантаження даних. Спробуйте пізніше.</div>';
-        return;
+    const views = displayedSchedules(dtek, yasno);
+    for (const { group, schedule, source } of views) {
+        const prefix = group === '13.1' ? '' : 'old-';
+        const content = document.getElementById(prefix + 'content');
+        const footer = document.getElementById(prefix + 'schedule-update');
+        footer.hidden = !schedule;
+        if (!dtek && !yasno) {
+            content.innerHTML = '<div class="error">Помилка завантаження даних. Спробуйте пізніше.</div>';
+            continue;
+        }
+        renderSchedule(content, schedule);
+        if (!schedule) continue;
+        const name = source === 'dtek' ? 'ДТЕК' : 'ЯСНО';
+        const updatedAt = Date.parse(schedule.lastUpdate);
+        footer.textContent = Number.isFinite(updatedAt)
+            ? `Останнє оновлення: ${new Date(updatedAt).toLocaleString('uk-UA', { timeZone: 'Europe/Kyiv' })} (${name})`
+            : `Час оновлення невідомий (${name})`;
     }
-
-    const schedule = savedSchedules[currentDataSource];
-    renderSchedule(schedule);
+    displayedSources = [...new Set(views.map(view => view.source).filter(Boolean))];
     renderFreshness();
-
-    const name = currentDataSource === 'dtek' ? 'ДТЕК' : 'ЯСНО';
-    const updatedAt = Date.parse(schedule.lastUpdate);
-    const footer = document.getElementById('schedule-update');
-    footer.textContent = Number.isFinite(updatedAt)
-        ? `Останнє оновлення: ${new Date(updatedAt).toLocaleString('uk-UA', { timeZone: 'Europe/Kyiv' })} (${name})`
-        : `Час оновлення невідомий (${name})`;
-    footer.hidden = false;
-    document.getElementById('yasno-emergency').hidden =
-        currentDataSource !== 'yasno' || schedule.today?.status !== 'EmergencyShutdowns';
+    const emergencyGroups = views.filter(view => view.source === 'yasno' && view.schedule.today?.status === 'EmergencyShutdowns');
+    const emergency = document.getElementById('yasno-emergency');
+    emergency.hidden = !emergencyGroups.length;
+    if (!emergency.hidden) {
+        emergency.textContent = '⚠️ Екстрені відключення · ' + emergencyGroups.map(view => 'група ' + view.group).join(', ');
+    }
 }
 
 function loadSchedule() {

@@ -1,14 +1,16 @@
 const fs = require('node:fs');
 const { setTimeout: delay } = require('node:timers/promises');
 const { scheduleSnapshot, addressNotice } = require('./schedule-changes');
-const { buildNotification, sendNotification } = require('./notification-core');
+const { buildDisplayedNotification, buildNotification, sendNotification } = require('./notification-core');
+const { waitForPublication: waitForAllFiles } = require('./github-pipeline');
 const { latestScheduleSource } = require('../../schedule-source');
 const scheduleFiles = { dtek: 'data/dtek-outages.json', yasno: 'data/outages.json' };
 
 async function waitForPublishedData(expected, siteUrl, {
-    source = 'dtek', fetchImpl = fetch, sleep = delay, log = console.log, clock = Date.now,
+    files, source = 'dtek', fetchImpl = fetch, sleep = delay, log = console.log, clock = Date.now,
     timeoutMs = 4 * 60 * 1000, intervalMs = 10000
 } = {}) {
+    if (files) return waitForAllFiles(files, siteUrl, { fetchImpl, sleep, clock, timeoutMs, intervalMs });
     const snapshot = (data, address) => JSON.stringify({
         days: scheduleSnapshot(data), address: addressNotice(address)
     });
@@ -58,12 +60,15 @@ async function notifyScheduleChanges(source, {
     const selected = latestScheduleSource(dtek, yasno);
     if (!selected) throw new Error('No published schedule');
     const address = JSON.parse(fs.readFileSync(`${root}/data/dtek-address.json`, 'utf8'));
-    const notification = buildNotification(selected, state, selected === 'dtek' ? dtek : yasno, config, address, now);
+    const notification = buildDisplayedNotification(state, dtek, yasno, config, address, now);
     if (!notification) {
         log(`No schedule changes for ${source}`);
         return;
     }
-    await waitForPublication(notification.state, config.siteUrl, { log, source: selected });
+    const files = { 'dtek-address.json': address };
+    if (dtek) files['dtek-outages.json'] = dtek;
+    if (yasno) files['outages.json'] = yasno;
+    await waitForPublication(notification.state, config.siteUrl, { log, source: selected, files });
     const result = notification.payload ? await send(notification.payload, apiKey) : null;
     if (notification.payload && !result?.delivered) {
         throw new Error('OneSignal did not accept the notification; notification remains pending');
