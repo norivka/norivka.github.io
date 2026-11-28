@@ -1,5 +1,5 @@
 {
-  "lastUpdate": "2026-11-28T15:12:27.053Z",
+  "lastUpdate": "2026-11-28T15:18:36.539Z",
   "schedules": {
     "1.1": {
       "today": {
@@ -814,5 +814,5 @@
     "date": "2026-11-28T00:00:00+02:00",
     "status": "ScheduleApplies"
   },
-  "groupCheckedAt": "2026-11-28T15:12:27.053Z"
+  "groupCheckedAt": "2026-11-28T15:18:36.539Z"
 }
