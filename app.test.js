@@ -197,7 +197,7 @@ test('temporary download failures retain the last schedule and show its actual a
     assert.match(freshness.textContent, /понад 15 хвилин/);
 });
 
-test('shows both fixed groups in order, choosing the newest available provider separately', async () => {
+test('shows both fixed groups in order, using one complete provider response and one timestamp for both', async () => {
     const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
     assert.match(html, /<h2[^>]*>Нові графіки, група 13\.1<\/h2>[\s\S]*?<h2[^>]*>Старі графіки, група 1\.1<\/h2>/);
     const dtek = { lastUpdate: '2026-11-01T08:00:00Z', days: [], group: null,
@@ -209,8 +209,8 @@ test('shows both fixed groups in order, choosing the newest available provider s
         response(url.includes('dtek-address') ? warning : url.includes('dtek-outages') ? dtek : yasno));
     await settle();
     assert.match(content.innerHTML, /03:00 — 04:00/);
-    assert.match(oldContent.innerHTML, /01:00 — 02:00/);
-    assert.match(indicator.textContent, /10:00:00 \(ДТЕК\)$/);
+    assert.match(oldContent.innerHTML, /05:00 — 06:00/);
+    assert.match(indicator.textContent, /08:00:00 \(ЯСНО\)$/);
     delete yasno.schedules['13.1'];
     await vm.runInContext('loadSchedule()', context);
     assert.match(content.innerHTML, /Інформація щодо графіків відсутня/);

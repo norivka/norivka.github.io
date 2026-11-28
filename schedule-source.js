@@ -122,12 +122,18 @@ function scheduleForGroup(source, feed, group) {
 }
 
 function displayedSchedules(dtek, yasno) {
-    return DISPLAY_GROUPS.map(group => {
-        const fromDtek = scheduleForGroup('dtek', dtek, group);
-        const fromYasno = scheduleForGroup('yasno', yasno, group);
-        const source = latestScheduleSource(fromDtek, fromYasno);
-        return { group, source, schedule: source === 'dtek' ? fromDtek : fromYasno };
-    });
+    const dtekGroups = DISPLAY_GROUPS.map(group => scheduleForGroup('dtek', dtek, group));
+    const yasnoGroups = DISPLAY_GROUPS.map(group => scheduleForGroup('yasno', yasno, group));
+    const availableDtek = dtekGroups.filter(Boolean);
+    const availableYasno = yasnoGroups.filter(Boolean);
+    let source;
+    if (availableDtek.length === availableYasno.length) {
+        source = latestScheduleSource(availableDtek[0], availableYasno[0]);
+    } else {
+        source = availableDtek.length > availableYasno.length ? 'dtek' : 'yasno';
+    }
+    const selected = source === 'dtek' ? dtekGroups : yasnoGroups;
+    return { source, groups: DISPLAY_GROUPS.map((group, i) => ({ group, schedule: selected[i] })) };
 }
 
 if (typeof module !== 'undefined') module.exports = { latestScheduleSource, selectGroup, yasnoDays, displayedSchedules };

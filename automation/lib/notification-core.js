@@ -51,13 +51,14 @@ function buildDisplayedNotification(previousState, dtek, yasno, config, addressD
     const groups = { ...previousState.groups };
     const changes = [];
     const today = kyivDate(now);
-    for (const { group, source, schedule } of displayedSchedules(dtek, yasno)) {
+    const displayed = displayedSchedules(dtek, yasno);
+    for (const { group, schedule } of displayed.groups) {
         if (!schedule) continue; // A missing group is not a cancellation.
         const days = scheduleSnapshot(schedule);
         // A pre-migration baseline has no group label. Seed the displayed groups once.
         if (previousState.groups) {
             const kind = scheduleChangeKind(groups[group] ?? [], days, today);
-            if (kind) changes.push({ source, group, kind });
+            if (kind) changes.push({ source: displayed.source, group, kind });
         }
         groups[group] = days;
     }

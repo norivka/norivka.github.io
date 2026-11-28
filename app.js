@@ -6,7 +6,7 @@ const DATA_URLS = {
 };
 const DTEK_ADDRESS_URL = 'data/dtek-address.json';
 
-let displayedSources = [];
+let displayedSource = null;
 const savedSchedules = {};
 let refreshInProgress;
 const STALE_AFTER_MS = 15 * 60 * 1000;
@@ -14,12 +14,12 @@ const STALE_AFTER_MS = 15 * 60 * 1000;
 function renderFreshness(now = Date.now()) {
     const banner = document.getElementById('data-freshness');
     const messages = [];
-    for (const source of displayedSources) {
-        const timestamp = Date.parse(savedSchedules[source].lastUpdate);
+    if (displayedSource) {
+        const timestamp = Date.parse(savedSchedules[displayedSource].lastUpdate);
         if (!Number.isFinite(timestamp)) messages.push('Час останнього оновлення невідомий.');
         else if (now - timestamp > STALE_AFTER_MS) messages.push('Дані не оновлювалися понад 15 хвилин і можуть бути застарілими.');
     }
-    banner.textContent = [...new Set(messages)].join(' ');
+    banner.textContent = messages.join(' ');
     banner.hidden = messages.length === 0;
 }
 const FOREGROUND_CHECK_INTERVAL = 5 * 60 * 1000; // Check every 5 minutes when app is visible
@@ -166,7 +166,7 @@ async function loadScheduleData(source) {
 async function loadLatestSchedule() {
     await Promise.all([loadScheduleData('dtek'), loadScheduleData('yasno')]);
     const { dtek, yasno } = savedSchedules;
-    const views = displayedSchedules(dtek, yasno);
+    const { source, groups: views } = displayedSchedules(dtek, yasno);
     for (const { group, schedule } of views) {
         const prefix = group === '13.1' ? '' : 'old-';
         const content = document.getElementById(prefix + 'content');
@@ -176,10 +176,6 @@ async function loadLatestSchedule() {
         }
         renderSchedule(content, schedule);
     }
-    const source = latestScheduleSource(
-        views.find(view => view.source === 'dtek')?.schedule,
-        views.find(view => view.source === 'yasno')?.schedule
-    );
     const footer = document.getElementById('schedule-update');
     footer.hidden = !source;
     if (source) {
@@ -189,9 +185,9 @@ async function loadLatestSchedule() {
             ? `Останнє оновлення: ${new Date(updatedAt).toLocaleString('uk-UA', { timeZone: 'Europe/Kyiv' })} (${name})`
             : `Час оновлення невідомий (${name})`;
     }
-    displayedSources = [...new Set(views.map(view => view.source).filter(Boolean))];
+    displayedSource = source;
     renderFreshness();
-    const emergencyGroups = views.filter(view => view.source === 'yasno' && view.schedule.today?.status === 'EmergencyShutdowns');
+    const emergencyGroups = views.filter(view => source === 'yasno' && view.schedule?.today?.status === 'EmergencyShutdowns');
     const emergency = document.getElementById('yasno-emergency');
     emergency.hidden = !emergencyGroups.length;
     if (!emergency.hidden) {
