@@ -167,19 +167,24 @@ async function loadLatestSchedule() {
     await Promise.all([loadScheduleData('dtek'), loadScheduleData('yasno')]);
     const { dtek, yasno } = savedSchedules;
     const views = displayedSchedules(dtek, yasno);
-    for (const { group, schedule, source } of views) {
+    for (const { group, schedule } of views) {
         const prefix = group === '13.1' ? '' : 'old-';
         const content = document.getElementById(prefix + 'content');
-        const footer = document.getElementById(prefix + 'schedule-update');
-        footer.hidden = !schedule;
         if (!dtek && !yasno) {
             content.innerHTML = '<div class="error">Помилка завантаження даних. Спробуйте пізніше.</div>';
             continue;
         }
         renderSchedule(content, schedule);
-        if (!schedule) continue;
+    }
+    const source = latestScheduleSource(
+        views.find(view => view.source === 'dtek')?.schedule,
+        views.find(view => view.source === 'yasno')?.schedule
+    );
+    const footer = document.getElementById('schedule-update');
+    footer.hidden = !source;
+    if (source) {
         const name = source === 'dtek' ? 'ДТЕК' : 'ЯСНО';
-        const updatedAt = Date.parse(schedule.lastUpdate);
+        const updatedAt = Date.parse(savedSchedules[source].lastUpdate);
         footer.textContent = Number.isFinite(updatedAt)
             ? `Останнє оновлення: ${new Date(updatedAt).toLocaleString('uk-UA', { timeZone: 'Europe/Kyiv' })} (${name})`
             : `Час оновлення невідомий (${name})`;

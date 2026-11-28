@@ -25,7 +25,6 @@ function createApp(fetch, dataBaseUrl = '', search = '') {
     const freshness = element();
     const indicator = element();
     const oldContent = element();
-    const oldIndicator = element();
     const emergency = element();
     const context = vm.createContext({
         AbortSignal, URLSearchParams,
@@ -34,7 +33,7 @@ function createApp(fetch, dataBaseUrl = '', search = '') {
         document: {
             hidden: true,
             getElementById: id => ({ content, 'dtek-notice': notice, 'data-freshness': freshness,
-                'schedule-update': indicator, 'old-content': oldContent, 'old-schedule-update': oldIndicator, 'yasno-emergency': emergency }[id]),
+                'schedule-update': indicator, 'old-content': oldContent, 'yasno-emergency': emergency }[id]),
             createElement: element,
             addEventListener() {}, querySelectorAll: () => []
         }
@@ -42,7 +41,7 @@ function createApp(fetch, dataBaseUrl = '', search = '') {
     for (const script of ['schedule-source.js', 'app.js']) {
         vm.runInContext(fs.readFileSync(path.join(__dirname, script), 'utf8'), context);
     }
-    return { context, content, oldContent, notice, freshness, indicator, oldIndicator, emergency };
+    return { context, content, oldContent, notice, freshness, indicator, emergency };
 }
 
 const response = data => ({ ok: true, json: async () => data });
@@ -206,16 +205,25 @@ test('shows both fixed groups in order, choosing the newest available provider s
     const entry = start => ({ today: { status: 'ScheduleApplies', date: '2026-11-01',
         slots: [{ type: 'Definite', start, end: start + 60 }] } });
     const yasno = { ...schedule, group: null, schedules: { '13.1': entry(180), '1.1': entry(300) } };
-    const { context, content, oldContent, indicator, oldIndicator } = createApp(async url =>
+    const { context, content, oldContent, indicator } = createApp(async url =>
         response(url.includes('dtek-address') ? warning : url.includes('dtek-outages') ? dtek : yasno));
     await settle();
     assert.match(content.innerHTML, /03:00 — 04:00/);
     assert.match(oldContent.innerHTML, /01:00 — 02:00/);
-    assert.match(indicator.textContent, /ЯСНО/);
-    assert.match(oldIndicator.textContent, /ДТЕК/);
+    assert.match(indicator.textContent, /10:00:00 \(ДТЕК\)$/);
     delete yasno.schedules['13.1'];
     await vm.runInContext('loadSchedule()', context);
     assert.match(content.innerHTML, /Інформація щодо графіків відсутня/);
-    assert.equal(indicator.hidden, true);
+    assert.equal(indicator.hidden, false);
     assert.match(oldContent.innerHTML, /01:00 — 02:00/);
+    delete dtek.schedules[1793484000]['GPV1.1'];
+    delete yasno.schedules['1.1'];
+    await vm.runInContext('loadSchedule()', context);
+    assert.equal(indicator.hidden, true);
+});
+
+test('renders a single schedule update footer below the notification controls', () => {
+    const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
+    assert.equal(html.match(/id="(?:old-)?schedule-update"/g)?.length, 1);
+    assert.ok(html.indexOf('id="schedule-update"') > html.indexOf('id="notification-status"'));
 });

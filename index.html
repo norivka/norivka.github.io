@@ -165,6 +165,11 @@
             margin-top: 20px;
         }
 
+        #schedule-update {
+            color: rgba(255, 255, 255, 0.85);
+            margin-top: 0;
+        }
+
         #data-freshness {
             background: #fff8e1;
             border-left: 4px solid #f9a825;
@@ -230,12 +235,10 @@
         <section>
             <h2 class="group-title">Нові графіки, група 13.1</h2>
             <div id="content" class="loading">Завантаження...</div>
-            <div id="schedule-update" class="last-update" hidden></div>
         </section>
         <section>
             <h2 class="group-title">Старі графіки, група 1.1</h2>
             <div id="old-content" class="loading">Завантаження...</div>
-            <div id="old-schedule-update" class="last-update" hidden></div>
         </section>
     </div>
 
@@ -244,9 +247,11 @@
         <p id="notification-status" role="status">Підключення сповіщень…</p>
     </div>
 
+    <footer id="schedule-update" class="last-update" hidden></footer>
+
     <script src="data-config.js?v=2"></script>
     <script src="schedule-source.js?v=2"></script>
-    <script src="app.js?v=6"></script>
+    <script src="app.js?v=7"></script>
     <script src="push-notifications.js?v=2"></script>
     <!-- Cloudflare Web Analytics -->
     <script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "7e69900542f64a498ddfa5a7e26e44d5"}'></script>
