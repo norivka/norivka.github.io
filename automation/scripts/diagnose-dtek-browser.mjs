@@ -1,7 +1,6 @@
 import { chromium } from 'playwright';
 import dtek from '../lib/process-dtek-data.js';
 import address from '../lib/process-dtek-address.js';
-import { scheduleSnapshot } from '../lib/schedule-changes.js';
 
 // Read-only probe: no storage, publication, notifications or session export.
 const browser = await chromium.launch({ headless: process.env.HEADED !== 'true' });
@@ -29,7 +28,6 @@ try {
     };
     try {
         const data = dtek.processData(html);
-        scheduleSnapshot(data);
         report.steps.push({ name: 'schedule', ok: true, data });
     } catch (error) { report.steps.push({ name: 'schedule', ok: false, error: error.message }); }
     try {

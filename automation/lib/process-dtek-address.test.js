@@ -40,9 +40,10 @@ test('only house 1 and requested fields are published, with independent timestam
     const now = new Date('2026-11-01T06:40:00Z');
     assert.deepEqual(processAddressData({
         result: true, updateTimestamp: '08:31 01.11.2026',
-        data: { '1': { ...address, type: '2' }, '2': { ...address, sub_type: 'wrong' }, '16': {} }
+        data: { '1': { ...address, type: '2', sub_type_reason: ['GPV13.1', 'GPV3.2'] },
+            '2': { ...address, sub_type_reason: ['GPV1.1'] }, '16': {} }
     }, now), {
-        source: 'DTEK', lastUpdate: now.toISOString(), sourceUpdate: '08:31 01.11.2026', ...address
+        source: 'DTEK', lastUpdate: now.toISOString(), sourceUpdate: '08:31 01.11.2026', group: 'GPV13.1', ...address
     });
     assert.throws(() => processAddressData({ data: { '2': address } }), /house 1/);
 });

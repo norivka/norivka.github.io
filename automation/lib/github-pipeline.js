@@ -1,7 +1,8 @@
 const { setTimeout: delay } = require('node:timers/promises');
 const { buildNotification, sendNotification } = require('./notification-core');
+const { selectGroup } = require('./group-schedule');
 
-const FILES = { schedule: 'dtek-outages.json', address: 'dtek-address.json', yasno: 'outages.json' };
+const FILES = { schedule: 'dtek-outages.json', address: 'dtek-address.json', yasno: 'outages.json', yasnoGroup: 'yasno-group.json' };
 
 // A partial upstream outage is degraded service, not a failed publication.
 function collectionFailed(run) {
@@ -51,6 +52,20 @@ async function collectData(previous, loaders, { sleep = delay, fallback } = {}) 
             for (const key of failedDtek) errors[key] += `; browser: ${error.message || 'Fallback failed'}`;
         }
     }
+    // The address and both schedules refresh independently. Re-select even when only the address changed.
+    for (const [source, file, groupFile] of [
+        ['dtek', FILES.schedule, FILES.address], ['yasno', FILES.yasno, FILES.yasnoGroup],
+    ]) {
+        const address = data[groupFile];
+        const schedule = data[file];
+        if (schedule?.schedules) {
+            data[file] = { ...selectGroup(source, schedule, address?.group ?? null),
+                groupCheckedAt: address?.lastUpdate ?? null };
+        } else if (schedule && address && Object.hasOwn(address, 'group')) {
+            // A pre-migration file cannot identify which group's intervals it contains.
+            data[file] = { ...schedule, days: [], group: null, ...(source === 'yasno' ? { today: null } : {}) };
+        }
+    }
     return { data, errors, updated, httpErrors, recovered };
 }
 
@@ -81,7 +96,8 @@ async function notifySources({ data, updated, states, config, apiKey, acknowledg
     const errors = {};
     await wait(data, config.siteUrl);
     for (const source of ['dtek', 'yasno']) {
-        if (!(source === 'dtek' ? updated.some(key => key === 'schedule' || key === 'address') : updated.includes('yasno'))) continue;
+        const addressUpdated = updated.includes(source === 'dtek' ? 'address' : 'yasnoGroup');
+        if (!updated.includes(source === 'dtek' ? 'schedule' : 'yasno') && !addressUpdated) continue;
         try {
             if (!states[source]?.revision) throw new Error(`Missing migrated ${source} notification state`);
             const schedule = data[source === 'dtek' ? FILES.schedule : FILES.yasno];

@@ -27,6 +27,10 @@ function renderFreshness(now = Date.now()) {
         if (now - timestamp > STALE_AFTER_MS) return ['Дані не оновлювалися понад 15 хвилин і можуть бути застарілими.'];
         return [];
     });
+    const schedule = freshness[currentDataSource].schedule;
+    if (schedule?.group && now - Date.parse(schedule.groupCheckedAt) > STALE_AFTER_MS) {
+        messages.push('Чергу для цієї адреси востаннє перевірено понад 15 хвилин тому.');
+    }
     banner.textContent = messages.join(' ');
     banner.hidden = messages.length === 0;
 }
@@ -65,7 +69,9 @@ function renderSchedule(data) {
     let html = '';
 
     // Check if there's valid data to display
-    if (!data || !data.days || data.days.length === 0) {
+    if (data?.group === null) {
+        html = '<div class="status warning">Не вдалося визначити графік для черги цієї адреси.</div>';
+    } else if (!data || !data.days || data.days.length === 0) {
         html = '<div class="status warning">Інформація щодо графіків відсутня</div>';
     } else {
         data.days.forEach(day => {
@@ -208,7 +214,8 @@ function updateDataSourceIndicator(source) {
             yasno: 'ЯСНО',
             dtek: 'ДТЕК'
         };
-        indicator.textContent = `Джерело: ${sourceNames[source]}`;
+        const group = savedSchedules[source]?.group;
+        indicator.textContent = `Джерело: ${sourceNames[source]}` + (group ? ` · Черга ${group.replace(/^GPV/, '')}` : '');
     }
 }
 

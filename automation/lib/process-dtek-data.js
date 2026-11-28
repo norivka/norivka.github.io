@@ -1,3 +1,4 @@
+const { readAddressGroup, selectGroup } = require('./group-schedule');
 
 function extractFactData(html) {
     const assignment = /\bDisconSchedule\.fact\s*=\s*/.exec(html);
@@ -39,76 +40,9 @@ function extractFactData(html) {
     throw new Error('Incomplete DisconSchedule.fact JSON');
 }
 
-function ukraineDate(date) {
-    return new Intl.DateTimeFormat('en-CA', {
-        timeZone: 'Europe/Kyiv', year: 'numeric', month: '2-digit', day: '2-digit'
-    }).format(date);
-}
-
-function convertHourValueToOutage(hourValue, hourIndex) {
-    // Convert hour-based values to minute-based outage intervals
-    // hourIndex is 1-based (1-24 representing hours of the day)
-
-    const hourStartMinutes = (hourIndex - 1) * 60;
-    const hourEndMinutes = hourIndex * 60;
-    const hourMidpoint = hourStartMinutes + 30;
-
-    switch (hourValue) {
-        case 'yes':
-            return []; // No outages
-        case 'no':
-            return [{ start: hourStartMinutes, end: hourEndMinutes }]; // Outage for entire hour
-        case 'first':
-            return [{ start: hourStartMinutes, end: hourMidpoint }]; // Outage for first half hour
-        case 'second':
-            return [{ start: hourMidpoint, end: hourEndMinutes }]; // Outage for second half hour
-        default:
-            return []; // Default to no outages for unknown values
-    }
-}
-
-function processDayData(gpvData, timestamp, isToday) {
-    const outages = [];
-
-    // Process each hour (1-24)
-    for (let hour = 1; hour <= 24; hour++) {
-        const hourValue = gpvData[hour.toString()];
-        if (hourValue && hourValue !== 'yes') {
-            const hourOutages = convertHourValueToOutage(hourValue, hour);
-            outages.push(...hourOutages);
-        }
-    }
-
-    // Merge consecutive outages
-    const mergedOutages = [];
-    if (outages.length > 0) {
-        let current = { ...outages[0] };
-
-        for (let i = 1; i < outages.length; i++) {
-            if (outages[i].start === current.end) {
-                // Consecutive outage, extend current
-                current.end = outages[i].end;
-            } else {
-                // Non-consecutive, save current and start new
-                mergedOutages.push(current);
-                current = { ...outages[i] };
-            }
-        }
-        mergedOutages.push(current); // Add the last outage
-    }
-
-    return {
-        // Preserve the actual instant: Kyiv uses UTC+3 during daylight saving time.
-        date: new Date(timestamp * 1000).toISOString(),
-        isToday: isToday,
-        outages: mergedOutages
-    };
-}
-
-function processData(data, now = new Date()) {
+function processData(data, now = new Date(), group = null) {
     const factData = extractFactData(data);
 
-    // Get the GPV1.1 data
     const gpvData = factData.data;
     const todayTimestamp = factData.today;
 
@@ -120,37 +54,15 @@ function processData(data, now = new Date()) {
         throw new Error('Invalid DTEK schedule response');
     }
 
-    const currentDateStr = ukraineDate(now);
-
-    console.log('Current Ukraine date (for isToday logic):', currentDateStr);
-
-    const processedDays = [];
-
-    // Process available days (today and possibly tomorrow)
-    Object.keys(gpvData).forEach((timestamp) => {
-        const dayData = gpvData[timestamp];
-
-        // Check if GPV1.1 exists for this day
-        if (dayData && dayData['GPV1.1']) {
-            // Calculate the actual date for this timestamp in Ukraine timezone
-            const dayDate = new Date(parseInt(timestamp) * 1000);
-            const dayDateStr = ukraineDate(dayDate);
-
-            const isToday = dayDateStr === currentDateStr;
-            console.log(`Day ${dayDateStr} isToday: ${isToday}`);
-
-            const processedDay = processDayData(dayData['GPV1.1'], parseInt(timestamp), isToday);
-            processedDays.push(processedDay);
+    for (const [timestamp, groups] of Object.entries(gpvData)) {
+        if (!Number.isFinite(new Date(Number(timestamp) * 1000).getTime()) ||
+            !groups || typeof groups !== 'object' || Array.isArray(groups) ||
+            Object.values(groups).some(hours => !hours || typeof hours !== 'object')) {
+            throw new Error('Invalid DTEK schedule day');
         }
-    });
+    }
 
-    const output = {
-        source: 'DTEK',
-        lastUpdate: now.toISOString(),
-        days: processedDays
-    };
-
-    return output;
+    return selectGroup('dtek', { source: 'DTEK', lastUpdate: now.toISOString(), schedules: gpvData }, group);
 }
 
 if (require.main === module) {
@@ -162,7 +74,7 @@ if (require.main === module) {
         const data = fs.readFileSync('raw-dtek-data.html', 'utf8');
 
         // Process the data
-        const output = processData(data);
+        const output = processData(data, new Date(), readAddressGroup('data/dtek-address.json'));
 
         // Ensure data directory exists
         if (!fs.existsSync('data')) {

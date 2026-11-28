@@ -183,3 +183,15 @@ test('temporary download failures retain the last schedule and show its actual a
     assert.equal(freshness.hidden, false);
     assert.match(freshness.textContent, /понад 15 хвилин/);
 });
+
+test('a fresh schedule warns when the address assignment is stale, and an unresolved group hides intervals', async () => {
+    const now = '2026-11-05T00:16:00Z';
+    const data = { ...schedule, group: 'GPV13.1', groupCheckedAt: '2026-11-05T00:00:00Z', lastUpdate: now };
+    const { context, content, freshness } = createApp(async url => response(url.includes('dtek-address') ? warning : data));
+    await settle();
+    vm.runInContext(`renderFreshness(Date.parse('${now}'))`, context);
+    assert.match(freshness.textContent, /Чергу для цієї адреси/);
+    data.group = null;
+    await vm.runInContext('loadSchedule()', context);
+    assert.match(content.innerHTML, /Не вдалося визначити графік/);
+});

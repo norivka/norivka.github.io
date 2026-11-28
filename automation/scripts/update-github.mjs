@@ -2,7 +2,7 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync, copyFileSync } from
 import { resolve, join } from 'node:path';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
-import { fetchSchedule, fetchAddress, fetchYasno } from '../src/providers.ts';
+import { fetchSchedule, fetchAddress, fetchYasno, fetchYasnoGroup } from '../src/providers.ts';
 import { fetchDtekBrowser } from './dtek-browser-fallback.mjs';
 const require = createRequire(import.meta.url);
 const { FILES, collectData, collectionFailed, reportSourceErrors, waitForPublication, notifySources } = require('../lib/github-pipeline.js');
@@ -34,6 +34,7 @@ if (phase === 'fetch') {
     const now = new Date();
     const result = await collectData(loadData(), {
         schedule: () => fetchSchedule(now), address: () => fetchAddress(now), yasno: () => fetchYasno(now),
+        yasnoGroup: () => fetchYasnoGroup(now),
     }, { fallback: fetchDtekBrowser });
     mkdirSync(join(state, 'data'), { recursive: true });
     for (const [file, data] of Object.entries(result.data)) write(join(state, 'data', file), data);

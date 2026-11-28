@@ -14,6 +14,7 @@ function runProcessor(fact, html = scheduleHtml(fact)) {
     const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'dtek-test-'));
     try {
         fs.mkdirSync(path.join(cwd, 'data'));
+        fs.writeFileSync(path.join(cwd, 'data/dtek-address.json'), JSON.stringify({ group: 'GPV13.1' }));
         fs.writeFileSync(path.join(cwd, 'data/dtek-outages.json'), 'previous data');
         fs.writeFileSync(path.join(cwd, 'raw-dtek-data.html'), html);
         // Leftover Puppeteer output must never override a fresh HTML response.
@@ -47,14 +48,16 @@ test('malformed responses fail and preserve previous data', () => {
     }
 });
 
-test('existing populated schedule conversion still works', () => {
+test('converts outages for GPV13.1 when both groups are present', () => {
     const hours = Object.fromEntries(Array.from({ length: 24 }, (_, i) => [i + 1, 'yes']));
     Object.assign(hours, { 2: 'second', 3: 'no', 4: 'first' });
     const result = runProcessor({
-        data: { 1770415200: { 'GPV1.1': hours } }, today: 1770415200
+        data: { 1770415200: { 'GPV1.1': { 1: 'no' }, 'GPV13.1': hours } }, today: 1770415200
     });
     assert.equal(result.status, 0, result.stderr);
-    assert.deepEqual(JSON.parse(result.output).days[0].outages, [{ start: 90, end: 210 }]);
+    const output = JSON.parse(result.output);
+    assert.deepEqual(output.days[0].outages, [{ start: 90, end: 210 }]);
+    assert.deepEqual(output.schedules[1770415200], { 'GPV1.1': { 1: 'no' }, 'GPV13.1': hours });
 });
 
 test('extracts nested JSON with escaped quotes and braces in strings', () => {
@@ -85,16 +88,13 @@ test('missing schedule errors identify protection responses without dumping the 
     });
 });
 
-test('parses the saved DTEK page with both days and all groups', () => {
+test('skips days on the saved DTEK page that lack GPV13.1', () => {
     const html = fs.readFileSync(path.join(__dirname, 'dtek-page.html'), 'utf8');
     const result = runProcessor({}, html);
     assert.equal(result.status, 0, result.stderr);
     const output = JSON.parse(result.output);
-    assert.equal(output.days.length, 2);
-    assert.deepEqual(output.days[0].outages, [
-        { start: 90, end: 600 }, { start: 810, end: 1230 }, { start: 1320, end: 1440 }
-    ]);
-    assert.deepEqual(output.days[1].outages, []);
+    assert.deepEqual(output.days, []);
+    assert.deepEqual(output.schedules, extractFactData(html).data);
 });
 
 test('Kyiv dates and isToday handle summer and winter midnight', () => {
@@ -105,8 +105,8 @@ test('Kyiv dates and isToday handle summer and winter midnight', () => {
     ]) {
         const timestamp = Date.parse(midnight) / 1000;
         const output = processData(scheduleHtml({
-            data: { [timestamp]: { 'GPV1.1': hours } }, today: timestamp
-        }), new Date(now));
+            data: { [timestamp]: { 'GPV13.1': hours } }, today: timestamp
+        }), new Date(now), 'GPV13.1');
         assert.equal(output.days[0].date, new Date(midnight).toISOString());
         assert.equal(output.days[0].isToday, true);
     }

@@ -31,7 +31,9 @@ function addressNotificationBody(notice) {
 function buildNotification(source, previousState, data, config, addressData = null, now = new Date()) {
     if (!Object.hasOwn(SOURCES, source)) throw new Error('Unknown schedule source');
     const previous = scheduleSnapshot(previousState);
-    const next = scheduleSnapshot(data);
+    // An unresolved address group must not be interpreted as a schedule cancellation.
+    if (source === 'yasno' && data.group === null) return null;
+    const next = data.group === null ? previous : scheduleSnapshot(data);
     const dates = changedScheduleDates(previous, next);
     const today = new Intl.DateTimeFormat('en-CA', {
         timeZone: 'Europe/Kyiv', year: 'numeric', month: '2-digit', day: '2-digit'

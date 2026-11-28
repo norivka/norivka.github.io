@@ -7,7 +7,7 @@ Worker `norivka-outages` лише запускає GitHub Actions кожні 6 �
 
 1. Cloudflare Cron `*/6 * * * *` викликає GitHub API `workflow_dispatch`
    для `.github/workflows/update-outages.yml`, гілка `main`, `notify: true`.
-2. Actions отримує графік ДТЕК, адресне повідомлення та Yasno через HTTP,
+2. Actions отримує повні графіки ДТЕК та ЯСНО й адресну чергу кожного постачальника через HTTP,
    обробляє їх спільними парсерами і зберігає JSON у гілці `outage-state`.
 3. Готові JSON комітяться в `data/` репозиторію `norivka/norivka.github.io`.
    Push у `main` автоматично запускає стандартний `pages-build-deployment`,
@@ -20,6 +20,7 @@ Worker `norivka-outages` лише запускає GitHub Actions кожні 6 �
 - https://norivka.github.io/data/dtek-outages.json
 - https://norivka.github.io/data/dtek-address.json
 - https://norivka.github.io/data/outages.json
+- https://norivka.github.io/data/yasno-group.json
 
 Сайт читає ці файли зі свого домену. Worker не отримує дані постачальників,
 не запускає браузер, не зберігає нові графіки й не надсилає push.

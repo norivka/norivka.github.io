@@ -1,10 +1,52 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { collectData, collectionFailed, waitForPublication, notifySources } = require('./github-pipeline');
+const { processAddressData } = require('./process-dtek-address');
+const { processYasnoData } = require('./process-data');
+const { processData } = require('./process-dtek-data');
 const config = require('../push-config.json');
 const empty = { days: [], lastUpdate: '2026-11-05T00:00:00Z' };
 const address = { sub_type: '', start_date: '', end_date: '', lastUpdate: empty.lastUpdate };
 const initial = { days: [], address, revision: 'initial', addressNotificationVersion: 1 };
+
+test('each provider follows its own address lookup when only assignments change', async () => {
+    const now = new Date('2026-11-05T09:00:00Z');
+    const timestamp = Date.parse('2026-11-05T00:00:00+02:00') / 1000;
+    const dtek = { [timestamp]: { 'GPV1.1': { 1: 'no' }, 'GPV13.1': { 4: 'no' } } };
+    const yasnoGroup = start => ({ today: { status: 'ScheduleApplies', date: '2026-11-05',
+        slots: [{ type: 'Definite', start, end: start + 60 }] } });
+    const yasno = { '1.1': yasnoGroup(0), '13.1': yasnoGroup(180) };
+    const house = reasons => processAddressData({ data: { 1: { ...address, sub_type_reason: reasons } } }, now);
+    const first = await collectData({}, {
+        schedule: () => processData('DisconSchedule.fact = ' + JSON.stringify({ data: dtek, today: timestamp }), now),
+        address: () => house(['GPV1.1', 'GPV13.1']), yasno: () => processYasnoData(yasno, now),
+        yasnoGroup: () => ({ group: '13.1', lastUpdate: now.toISOString() }),
+    });
+    const second = await collectData(first.data, { address: () => house(['13.1']),
+        yasnoGroup: () => ({ group: '1.1', lastUpdate: now.toISOString() }) });
+    const missing = await collectData(second.data, { address: () => house([]),
+        yasnoGroup: () => ({ group: '5.2', lastUpdate: now.toISOString() }) });
+    for (const [file, schedules, firstStart, secondStart] of [
+        ['outages.json', yasno, 180, 0], ['dtek-outages.json', dtek, 0, 180],
+    ]) {
+        for (const [result, start] of [[first, firstStart], [second, secondStart]]) {
+            assert.deepEqual(result.errors, {});
+            assert.deepEqual(result.data[file].days[0].outages, [{ start, end: start + 60 }]);
+            assert.deepEqual(result.data[file].schedules, schedules);
+        }
+        assert.deepEqual(missing.data[file].days, []);
+        assert.equal(missing.data[file].group, null);
+        assert.deepEqual(missing.data[file].schedules, schedules);
+    }
+    const states = Object.fromEntries(['dtek', 'yasno'].map(source => [source, {
+        ...initial, days: second.data['dtek-outages.json'].days,
+    }]));
+    const errors = await notifySources({ ...missing, states, config, now, wait: async () => {},
+        send: async () => assert.fail('Unresolved group must not send cancellation'),
+        acknowledge: async () => assert.fail('Unresolved group must not erase known schedule'),
+    });
+    assert.deepEqual(errors, {});
+});
 
 test('one browser session recovers both failed DTEK sources after HTTP retries', async () => {
     let attempts = 0;

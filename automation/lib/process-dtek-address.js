@@ -1,3 +1,4 @@
+const { normalizeGroup } = require('./group-schedule');
 
 function formatUpdateFact(now = new Date()) {
     const parts = new Intl.DateTimeFormat('uk-UA', {
@@ -21,6 +22,7 @@ function processAddressData(response, now = new Date()) {
         lastUpdate: now.toISOString(),
         ...(typeof response.updateTimestamp === 'string' && response.updateTimestamp.trim()
             ? { sourceUpdate: response.updateTimestamp.trim() } : {}),
+        group: normalizeGroup(typeof address.sub_type_reason === 'object' ? address.sub_type_reason?.[0] : null),
         sub_type: (address.sub_type ?? '').trim(),
         start_date: (address.start_date ?? '').trim(),
         end_date: (address.end_date ?? '').trim()

@@ -1,12 +1,13 @@
 import dtek from '../lib/process-dtek-data.js';
+import yasno from '../lib/process-data.js';
 import address from '../lib/process-dtek-address.js';
-import { scheduleSnapshot } from '../lib/schedule-changes.js';
 
 // Keep the same browser identity for the session page and its AJAX request.
 const DTEK_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36';
 
 const DTEK_PAGE = 'https://www.dtek-dnem.com.ua/ua/shutdowns/';
 const YASNO = 'https://app.yasno.ua/api/blackout-service/public/shutdowns/regions/3/dsos/301/planned-outages';
+const YASNO_ADDRESS = 'https://app.yasno.ua/api/blackout-service/public/shutdowns/addresses/v2/group?regionId=3&cityId=377&streetId=9467&houseId=324452&dsoId=301';
 
 // Bound decoded bodies, including chunked/compressed responses.
 export async function readBody(response: Response, limit = 2 * 1024 * 1024): Promise<string> {
@@ -61,9 +62,7 @@ async function request(url: string, init: RequestInit = {}, trace?: HttpTrace): 
 
 export async function fetchSchedule(now = new Date(), trace?: HttpTrace) {
     const html = await readBody(await request(DTEK_PAGE, { headers: { 'User-Agent': DTEK_USER_AGENT } }, trace));
-    const data = dtek.processData(html, now);
-    scheduleSnapshot(data);
-    return data;
+    return dtek.processData(html, now);
 }
 
 export async function fetchAddress(now = new Date(), trace?: HttpTrace) {
@@ -90,34 +89,20 @@ export async function fetchAddress(now = new Date(), trace?: HttpTrace) {
     return address.processAddressData(JSON.parse(await readBody(response)), now);
 }
 
-interface YasnoDay {
-    date: string;
-    status: string;
-    slots: { type: string; start: number; end: number }[];
-}
-
 export async function fetchYasno(now = new Date()) {
     const response = await request(YASNO, { headers: { Accept: 'application/json' } });
     const text = await readBody(response);
     if (!text.trimStart().startsWith('{')) throw new Error('Yasno returned non-JSON data (possible protection page)');
-    const group = JSON.parse(text)?.['1.1'] as { today?: YasnoDay; tomorrow?: YasnoDay } | undefined;
-    if (!group || (!group.today && !group.tomorrow)) throw new Error('Missing Yasno group 1.1 days');
-    const days = [group.today && { ...group.today, isToday: true },
-        group.tomorrow && { ...group.tomorrow, isToday: false }]
-        .filter(day => day && day.status === 'ScheduleApplies')
-        .map(day => {
-            if (!day) throw new Error('Invalid Yasno day');
-            return {
-                date: day.date, isToday: day.isToday,
-                outages: (day.slots || []).filter(slot => slot.type === 'Definite')
-                    .map(({ start, end }) => ({ start, end })).sort((a, b) => a.start - b.start),
-            };
-        });
-    const data = { lastUpdate: now.toISOString(), days,
-        today: group.today ? { date: group.today.date, status: group.today.status } : null,
-    };
-    scheduleSnapshot(data);
-    return data;
+    return yasno.processYasnoData(JSON.parse(text), now);
+}
+
+export async function fetchYasnoGroup(now = new Date()) {
+    const response = await request(YASNO_ADDRESS, { headers: { Accept: 'application/json' } });
+    const { group, subgroup } = JSON.parse(await readBody(response));
+    if (![group, subgroup].every(n => Number.isSafeInteger(n) && n > 0)) {
+        throw new Error('Invalid Yasno address group');
+    }
+    return { group: `${group}.${subgroup}`, lastUpdate: now.toISOString() };
 }
 
 // Runs the production HTTP providers without storage, notifications or browser fallback.
